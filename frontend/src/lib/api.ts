@@ -57,6 +57,16 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
+/** Raw upload (voice recordings): the body is the audio itself, no form encoding. */
+async function upload(path: string, blob: Blob): Promise<any> {
+  const t = session.get();
+  const r = await fetch(`${API_BASE}${path}`, { method: "POST", body: blob,
+    headers: { "Content-Type": blob.type || "audio/webm", ...(t ? { Authorization: `Bearer ${t}` } : {}) } });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.detail || body.error || `${r.status}`);
+  return body;
+}
+
 export const api = {
   health: () => req<any>("/api/health"),
   login: (password: string) => req<any>("/api/login", { method: "POST", body: JSON.stringify({ password }) }),
@@ -83,6 +93,10 @@ export const api = {
   xray: (asOf?: string) => req<any>(`/api/attorney/xray${asOf ? `?as_of=${asOf}` : ""}`),
   xrayAction: (issueId: string, action_type: string, content?: string) =>
     req<any>(`/api/attorney/xray/issues/${issueId}/actions`, { method: "POST", body: JSON.stringify({ action_type, content }) }),
+  chat: (question: string, history: any[]) => req<any>("/api/chat", { method: "POST", body: JSON.stringify({ question, history }) }),
+  providerChat: (token: string, question: string, history: any[]) =>
+    req<any>(`/api/provider/${token}/chat`, { method: "POST", body: JSON.stringify({ question, history }) }),
+  transcribe: (audio: Blob, token?: string) => upload(token ? `/api/provider/${token}/transcribe` : "/api/chat/transcribe", audio),
   stressTest: (force = false) => req<any>(`/api/attorney/xray/stress-test?force=${force}`, { method: "POST" }),
 };
 

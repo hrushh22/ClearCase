@@ -37,6 +37,16 @@ ClearCase reads one matter (Sapini) live from Clio Manage, read-only. It turns a
 
 > Case X-Ray evaluates consistency and evidence completeness within the available file. It does not determine legal truth, predict case outcomes, or replace attorney judgment.
 
+**Case assistant (chat + voice)**: a chat button sits in the bottom-right corner of every page.
+- **Attorney assistant**: answers only from the case's verified facts, the dashboard's headline values and X-Ray issues,
+  retrieved for each question. Every answer carries numbered citations that open the source page. Unknown or uncited
+  item numbers are dropped, and unsupported facts are never sent to the model.
+- **Provider assistant** (on each provider link): answers only from the claims the attorney approved and signed for
+  that link. Nothing else is put in the prompt, so it cannot leak strategy, valuation or other providers' data. Anything
+  else gets "I can't share that here. Please contact the firm."
+- **Voice**: tap the mic, speak, tap again. The recording is transcribed by Groq Whisper (`whisper-large-v3-turbo`, same
+  `GROQ_API_KEY`) and answered. The speaker toggle reads answers aloud using the browser's own voice. Audio is not stored.
+
 ## How it works
 
 ```

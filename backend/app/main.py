@@ -315,6 +315,57 @@ def subscribe(token: str, inp: SubIn):
     return sharing.subscribe(token, inp.email)
 
 
+# --------------------------------------------------------------------------- chat
+
+class ChatIn(BaseModel):
+    question: str
+    history: list[dict] = []
+
+
+@app.post("/api/chat")
+def chat_attorney(inp: ChatIn):
+    """Attorney assistant: answers only from verified case facts, with citations (behind the password gate)."""
+    from . import chat
+    return chat.attorney_chat(inp.question, inp.history)
+
+
+@app.post("/api/provider/{token}/chat")
+def chat_provider(token: str, inp: ChatIn):
+    """Provider assistant: answers only from this link's approved, signed claims."""
+    from . import chat
+    out = chat.provider_chat(token, inp.question, inp.history)
+    if out.get("error") == "not_found":
+        raise HTTPException(404, "Link not found")
+    return out
+
+
+async def _transcribe(request: Request) -> dict:
+    from . import chat
+    audio = await request.body()
+    try:
+        return chat.transcribe(audio, request.headers.get("content-type", "audio/webm"))
+    except OverflowError:
+        raise HTTPException(413, "Recording too long (about 3 minutes max)")
+    except LookupError as e:
+        raise HTTPException(503, str(e))
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/chat/transcribe")
+async def transcribe_attorney(request: Request):
+    return await _transcribe(request)
+
+
+@app.post("/api/provider/{token}/transcribe")
+async def transcribe_provider(token: str, request: Request):
+    from .sharing import _now
+    link = db.one("SELECT revoked, expires_at FROM share_links WHERE token=?", (token,))
+    if not link or link["revoked"] or link["expires_at"] < _now().isoformat():
+        raise HTTPException(404, "Link not found or no longer active")  # voice only for live links
+    return await _transcribe(request)
+
+
 @app.get("/.well-known/firm-key")
 def firm_key():
     return {"alg": "Ed25519", "public_key": public_key_b64(), "firm": firm_name()}

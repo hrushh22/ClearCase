@@ -5,6 +5,7 @@ import ShareBuilder from "./pages/ShareBuilder";
 import CaseXRay from "./pages/CaseXRay";
 import ProviderPortal from "./pages/ProviderPortal";
 import { SourceProvider } from "./components/SourceViewer";
+import ChatWidget from "./components/ChatWidget";
 import { api, authedUrl, fmtDateTime, session } from "./lib/api";
 
 function Login({ onDone }: { onDone: () => void }) {
@@ -146,6 +147,7 @@ function Attorney() {
             </Routes>
           )}
         </main>
+        {d && <ChatWidget mode="attorney" />}
       </div>
     </SourceProvider>
   );

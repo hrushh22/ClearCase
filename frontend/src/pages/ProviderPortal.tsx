@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import nacl from "tweetnacl";
 import ProviderView, { type ProviderClaim } from "../components/ProviderView";
+import ChatWidget from "../components/ChatWidget";
 import { api } from "../lib/api";
 
 const b64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -62,6 +63,7 @@ export default function ProviderPortal() {
       <ProviderView firm={data.firm_name} provider={data.provider_name} claims={claims} waterfall={data.waterfall} events={data.events}
         subscribed={sub || (data.notify_email ? `Updates go to ${data.notify_email}` : null)}
         onSubscribe={(email) => api.subscribe(token, email).then((r) => setSub(r.ok ? `Subscribed ${email} (${r.email_mode}).` : "Could not subscribe."))} />
+      <ChatWidget mode="provider" token={token} firm={data.firm_name} />
       <div className="mt-6 text-center text-xs text-slate-400">Shared on purpose, item by item. You are not seeing the firm's file. Link expires {new Date(data.expires_at).toLocaleDateString()}.</div>
     </Shell>
   );

@@ -33,6 +33,7 @@ ROUTES = {
     "extraction": "mistral", "timeline": "mistral", "kpi": "mistral",
     "verifier": "groq", "priority": "groq", "stage": "groq", "share_policy": "groq",
     "stress": "groq",
+    "chat": "groq",
 }
 # groq_small = Groq gpt-oss-20b: same key, its own free-tier token bucket; used for bulk work when Mistral is unavailable
 FAILOVER = ["gemini", "mistral", "groq_small", "groq"]
