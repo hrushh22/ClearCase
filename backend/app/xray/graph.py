@@ -117,9 +117,56 @@ def build(facts: list[dict], props: list[dict], issues: list[dict], injury: dict
                     if mentions(i["entity"], p["tokens"]):
                         edge(iid, f"prov_{p['id']}", "DEPENDS_ON" if i["issue_type"] == "dependency" else "MISSING_EVIDENCE_FOR", status=status)
 
+    ov = overview(nodes, edges, props, issues)
     used = {e["source"] for e in edges} | {e["target"] for e in edges}
     out_nodes = [n for n in nodes.values() if n["id"] in used or n["type"] in ("claim", "person")]
     for n in out_nodes:
         n.pop("tokens", None)
-    return {"nodes": out_nodes, "edges": edges,
+    return {"nodes": out_nodes, "edges": edges, "overview": ov,
             "legend": {"node_types": sorted({n["type"] for n in out_nodes}), "relationships": sorted({e["relationship"] for e in edges})}}
+
+
+def overview(nodes: dict, edges: list[dict], props: list[dict], issues: list[dict], max_links: int = 3) -> dict:
+    """Readable summary graph: propositions, issues and the people/injuries they involve.
+
+    Facts and sources are folded into their proposition (shown as counts); fact-level links become one
+    weighted link per proposition/entity pair, keeping each proposition's strongest few.
+    """
+    ov_nodes, ov_edges = [], []
+    supports: dict[str, set[str]] = {}
+    for e in edges:
+        if e["relationship"] == "SUPPORTS":
+            supports.setdefault(e["target"], set()).add(e["source"])
+    fact_links: dict[str, dict[str, int]] = {}
+    for e in edges:
+        if e["source"].startswith("fact_") and e["relationship"] in ("MENTIONS", "BILLED_BY", "EVIDENCE_FOR") and                 nodes.get(e["target"], {}).get("type") in ("provider", "party", "injury"):
+            fact_links.setdefault(e["source"], {}).setdefault(e["target"], 0)
+            fact_links[e["source"]][e["target"]] += 1
+    for p in props:
+        ov_nodes.append({"id": p["id"], "kind": "claim", "label": p["title"], "state": p["state"], "state_label": p["state_label"],
+                         "verified": p["components"]["verified_sources"], "contradictions": len(p["contradictions"]), "gaps": len(p["gaps"])})
+        counts: dict[str, int] = {}
+        for fid in supports.get(p["id"], set()) | {f"fact_{x}" for x in p["fact_ids"]}:
+            for ent, n in fact_links.get(fid, {}).items():
+                counts[ent] = counts.get(ent, 0) + n
+        if p["category"] == "injury":
+            counts[f"inj_{p['id'][len('p_injury_'):]}"] = counts.get(f"inj_{p['id'][len('p_injury_'):]}", 0) + 1000  # always keep its region
+        for ent, n in sorted(counts.items(), key=lambda kv: -kv[1])[:max_links]:
+            if ent in nodes:
+                ov_edges.append({"id": f"o{len(ov_edges)}", "source": p["id"], "target": ent, "relationship": "INVOLVES", "count": n % 1000 or None})
+    for i in issues:
+        targets = [p["id"] for p in props if i["id"] in p["contradictions"] or i["id"] in p["gaps"]]
+        ov_nodes.append({"id": f"issue_{i['id']}", "kind": "issue", "issue_id": i["id"], "issue_type": i["issue_type"], "label": i["title"],
+                         "severity": i["severity"], "verify_status": i.get("verify_status")})
+        rel = "CONTRADICTS" if i["issue_type"] in ("contradiction", "amount_mismatch") else "MISSING_EVIDENCE_FOR"
+        for t in targets[:2]:
+            ov_edges.append({"id": f"o{len(ov_edges)}", "source": f"issue_{i['id']}", "target": t, "relationship": rel})
+        if not targets and i.get("entity"):
+            ent = next((n["id"] for n in nodes.values() if n["type"] in ("provider", "party") and n["label"] == i["entity"]), None)
+            if ent:
+                ov_edges.append({"id": f"o{len(ov_edges)}", "source": f"issue_{i['id']}", "target": ent, "relationship": "DEPENDS_ON"})
+    linked = {e["target"] for e in ov_edges} | {e["source"] for e in ov_edges}
+    for n in nodes.values():
+        if n["type"] in ("provider", "party", "injury") and n["id"] in linked:
+            ov_nodes.append({"id": n["id"], "kind": n["type"], "label": n["label"], "detail": n.get("detail"), "state": n.get("state")})
+    return {"nodes": ov_nodes, "edges": ov_edges}

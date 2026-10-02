@@ -26,7 +26,11 @@ export default function CaseXRay({ d }: { d: any }) {
   const [x, setX] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [asOf, setAsOf] = useState<string | null>(null);
-  const [focus, setFocus] = useState<string[] | null>(null);
+  // deep link: /xray?focus=<proposition id | issue_<id>> opens that evidence view directly
+  const [focus, setFocus] = useState<string[] | null>(() => {
+    const f = new URLSearchParams(window.location.search).get("focus");
+    return f ? [f] : null;
+  });
   const [spotlight, setSpotlight] = useState(false);
   const [openIssue, setOpenIssue] = useState<string | null>(null);
 
@@ -91,8 +95,8 @@ export default function CaseXRay({ d }: { d: any }) {
         </div>
       </div>
 
-      <Section title="Case Constellation" sub="Every node comes from the case data. Select something and press Show Me Why to isolate the evidence chain behind it.">
-        <CaseConstellation graph={x.graph} focus={focus} onFocusIssue={goIssue} />
+      <Section title="Case Constellation" sub="The key propositions and open issues in this case, with the injuries and people involved. Click any card to see the evidence behind it.">
+        <CaseConstellation x={x} focus={focus} onFocusIssue={goIssue} />
       </Section>
 
       <Section title="Evidence coverage" sub="Support state per key proposition, computed from countable evidence (verified sources, source types, contradictions, gaps). No percentages or outcome scores.">

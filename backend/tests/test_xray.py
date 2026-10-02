@@ -212,3 +212,22 @@ def test_actions_store_drafts_without_sending():
     assert next(i for i in issues if i["id"] == iid)["review"]["status"] == "snoozed"
     with pytest.raises(ValueError):
         service.add_action(iid, "send_email")
+
+
+def test_overview_is_compact_and_consistent():
+    fs = [DOI] + [fact(f"k{n}", "injury", f"Left knee meniscus tear note {n}", st="document", sid=f"d{n}") for n in range(6)] +          [fact("t1", "treatment", "Alpha Orthopedics treated left knee"), fact("t2", "treatment", "Alpha Orthopedics knee follow-up")]
+    issues = service.verify_issues(contradictions.detect(fs, use_llm=False), fs)
+    inj = injury_map(fs, issues)
+    props = propositions(fs, issues, inj, {})
+    g = graph.build(fs, props, issues, inj, {"contacts": BUNDLE["contacts"]}, [], set(), {})
+    ov = g["overview"]
+    ids = {n["id"] for n in ov["nodes"]}
+    assert all(e["source"] in ids and e["target"] in ids for e in ov["edges"])
+    assert not any(n["kind"] in ("fact", "source", "document") for n in ov["nodes"])  # facts folded into propositions
+    assert len(ov["nodes"]) < len(g["nodes"]) and len(ov["edges"]) < len(g["edges"])
+    per_claim = {}
+    for e in ov["edges"]:
+        if e["relationship"] == "INVOLVES":
+            per_claim[e["source"]] = per_claim.get(e["source"], 0) + 1
+    assert all(n <= 3 for n in per_claim.values())  # at most 3 links per proposition
+    assert any(e["target"] == "inj_knee" for e in ov["edges"])
