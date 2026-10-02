@@ -33,12 +33,13 @@ ROUTES = {
     "extraction": "mistral", "timeline": "mistral", "kpi": "mistral",
     "verifier": "groq", "priority": "groq", "stage": "groq", "share_policy": "groq",
 }
-FAILOVER = ["gemini", "mistral", "groq"]
-KEYS = {"gemini": "GEMINI_API_KEY", "mistral": "MISTRAL_API_KEY", "groq": "GROQ_API_KEY"}
+# groq_small = Groq gpt-oss-20b: same key, its own free-tier token bucket; used for bulk work when Mistral is unavailable
+FAILOVER = ["gemini", "mistral", "groq_small", "groq"]
+KEYS = {"gemini": "GEMINI_API_KEY", "mistral": "MISTRAL_API_KEY", "groq": "GROQ_API_KEY", "groq_small": "GROQ_API_KEY"}
 # approximate paid list prices, USD per 1M tokens (input, output), for the per-case cost estimate
-PAID_PRICE = {"gemini": (0.30, 2.50), "mistral": (0.10, 0.30), "groq": (0.15, 0.75)}
-MIN_INTERVAL = {"gemini": 6.5, "mistral": 1.1, "groq": 2.1}
-TPM = {"gemini": 200_000, "mistral": 400_000, "groq": 7_500}
+PAID_PRICE = {"gemini": (0.30, 2.50), "mistral": (0.10, 0.30), "groq": (0.15, 0.75), "groq_small": (0.075, 0.30)}
+MIN_INTERVAL = {"gemini": 6.5, "mistral": 1.1, "groq": 2.1, "groq_small": 2.1}
+TPM = {"gemini": 200_000, "mistral": 400_000, "groq": 7_500, "groq_small": 7_500}
 MAX_QUEUE_WAIT = 20.0  # seconds; beyond this a call spills to the next provider
 
 
@@ -46,36 +47,52 @@ class LLMUnavailable(RuntimeError):
     pass
 
 
+_disabled: set[str] = set()  # providers whose key has no quota (e.g. Mistral plan not activated); skipped for this process
+
+
 class _Limiter:
+    """Reservation-based free-tier limiter: min interval between calls + tokens per rolling minute."""
+
     def __init__(self, provider: str):
         self.provider = provider
         self.last = 0.0
-        self.window: deque[tuple[float, int]] = deque()
-        self.lock = threading.Lock()
+        self.window: deque[tuple[float, int]] = deque()  # (start time, tokens), may include future reservations
+
+    def _start_time(self, est_tokens: int) -> float:
+        now = time.time()
+        while self.window and now - self.window[0][0] > 60:
+            self.window.popleft()
+        t = max(now, self.last + MIN_INTERVAL[self.provider])
+        for _ in range(50):
+            inside = [(s, n) for s, n in self.window if t - 60 < s <= t]
+            if not inside or sum(n for _, n in inside) + est_tokens <= TPM[self.provider]:
+                return t
+            t = inside[0][0] + 60.01
+        return t
 
     def eta(self, est_tokens: int) -> float:
-        """Rough seconds until a call of this size could start."""
-        now = time.time()
-        recent = [(t, n) for t, n in self.window if now - t <= 60]
-        used = sum(n for _, n in recent)
-        gap = max(0.0, MIN_INTERVAL[self.provider] - (now - self.last))
-        if recent and used + est_tokens > TPM[self.provider]:
-            gap = max(gap, 60 - (now - recent[0][0]))
-        return gap
+        return max(0.0, self._start_time(est_tokens) - time.time())
 
-    def wait(self, est_tokens: int) -> None:
-        with self.lock:
-            while True:
-                now = time.time()
-                while self.window and now - self.window[0][0] > 60:
-                    self.window.popleft()
-                used = sum(t for _, t in self.window)
-                gap = MIN_INTERVAL[self.provider] - (now - self.last)
-                if gap <= 0 and (used + est_tokens <= TPM[self.provider] or not self.window):
-                    self.last = now
-                    self.window.append((now, est_tokens))
-                    return
-                time.sleep(max(gap, 0.5))
+    def reserve(self, est_tokens: int) -> float:
+        t = self._start_time(est_tokens)
+        self.last = t
+        self.window.append((t, est_tokens))
+        return t
+
+
+_pick_lock = threading.Lock()
+
+
+def _acquire(order: list[str], est_tokens: int, pinned: str | None = None) -> str:
+    """Atomically pick the provider that can start soonest (ties go to routing order), reserve it, then wait."""
+    with _pick_lock:
+        cands = [pinned] if pinned else order
+        provider = min(cands, key=lambda p: (round(_limiters[p].eta(est_tokens) / MAX_QUEUE_WAIT), cands.index(p)))
+        start = _limiters[provider].reserve(est_tokens)
+    delay = start - time.time()
+    if delay > 0:
+        time.sleep(delay)
+    return provider
 
 
 _limiters = {p: _Limiter(p) for p in FAILOVER}
@@ -83,7 +100,34 @@ _gemini_model: str | None = None
 
 
 def available_providers() -> list[str]:
-    return [p for p in FAILOVER if env(KEYS[p])]
+    return [p for p in FAILOVER if env(KEYS[p]) and p not in _disabled]
+
+
+def probe() -> dict[str, str]:
+    """Cheap quota check before a run, so a key with no quota is known up front (not on the first failure)."""
+    out = {}
+    for p in [p for p in ("mistral", "groq") if env(KEYS[p]) and p not in _disabled]:
+        url = "https://api.mistral.ai/v1/models" if p == "mistral" else "https://api.groq.com/openai/v1/models"
+        try:
+            if p == "mistral":  # the models list is not rate limited; a 1-token completion shows the real quota
+                r = httpx.post("https://api.mistral.ai/v1/chat/completions", timeout=20,
+                               headers={"Authorization": f"Bearer {env(KEYS[p])}"},
+                               json={"model": "mistral-small-latest", "max_tokens": 1, "messages": [{"role": "user", "content": "ok"}]})
+            else:
+                r = httpx.get(url, headers={"Authorization": f"Bearer {env(KEYS[p])}"}, timeout=20)
+            if r.status_code == 401 or (r.status_code == 429 and r.headers.get("x-ratelimit-limit-req-minute") == "0"):
+                _disabled.add(p)
+                if p == "groq":
+                    _disabled.add("groq_small")
+            out[p] = "disabled" if p in _disabled else "ok"
+        except httpx.HTTPError:
+            out[p] = "unreachable"
+    return out
+
+
+def bulk_capacity() -> str:
+    """'full' when a high-volume provider (Gemini/Mistral) works, else 'limited' (Groq free tier only)."""
+    return "full" if any(p in available_providers() for p in ("gemini", "mistral")) else "limited"
 
 
 def gemini_model() -> str:
@@ -140,7 +184,8 @@ def _call(provider: str, prompt: str, images: list[bytes] | None) -> tuple[str, 
     if provider == "mistral":
         url, model, extra = "https://api.mistral.ai/v1/chat/completions", "mistral-small-latest", {}
     else:
-        url, model, extra = "https://api.groq.com/openai/v1/chat/completions", "openai/gpt-oss-120b", {"reasoning_effort": "low"}
+        model = "openai/gpt-oss-20b" if provider == "groq_small" else "openai/gpt-oss-120b"
+        url, extra = "https://api.groq.com/openai/v1/chat/completions", {"reasoning_effort": "low"}
     r = httpx.post(url, headers={"Authorization": f"Bearer {key}"}, timeout=180, json={
         "model": model, "temperature": 0, "response_format": {"type": "json_object"},
         "messages": [{"role": "user", "content": prompt}], **extra})
@@ -173,25 +218,37 @@ def complete_json(task: str, prompt: str, schema: type[T], images: list[bytes] |
 
     primary = ROUTES.get(task, "mistral")
     order = [primary] + [p for p in FAILOVER if p != primary]
-    order = [p for p in order if env(KEYS[p]) and (not images or p == "gemini")]
+    order = [p for p in order if env(KEYS[p]) and p not in _disabled and (not images or p == "gemini")]
     if not order:
         raise LLMUnavailable(f"No LLM key configured for task '{task}'. Fill GEMINI_API_KEY / MISTRAL_API_KEY / GROQ_API_KEY in .env.")
 
     errors = []
-    est = len(full) // 3 + 1500
-    # spill over: if the routed provider's free-tier budget would stall us, use the next provider now
-    if len(order) > 1 and _limiters[order[0]].eta(est) > MAX_QUEUE_WAIT:
-        order = order[1:] + order[:1]
-    for provider in order:
+    est = len(full) // 4 + 900  # prompt tokens (~4 chars each) + typical answer
+    tried: list[str] = []
+    while len(tried) < len(order):
+        remaining = [p for p in order if p not in tried and p not in _disabled]
+        if not remaining:
+            break
+        provider = _acquire(remaining, est)  # soonest-available provider; spreads load across free-tier buckets
+        tried.append(provider)
         attempt_prompt = full
         for attempt in range(4):
-            _limiters[provider].wait(len(attempt_prompt) // 3 + 1500)
+            if attempt > 0:
+                _acquire([provider], len(attempt_prompt) // 4 + 900, pinned=provider)
             try:
                 text, pt, ct, model = _call(provider, attempt_prompt, images)
             except httpx.HTTPStatusError as e:
                 code = e.response.status_code
                 _log(task, provider, "", 0, 0, False, f"{code}: {str(e)[:200]}")
                 errors.append(f"{provider} {code}")
+                if code == 429 and e.response.headers.get("x-ratelimit-limit-req-minute") == "0":
+                    _disabled.add(provider)  # no quota at all on this key: stop trying it
+                    break
+                if code == 401:
+                    _disabled.add(provider)
+                    break
+                if code == 400 and "json_validate_failed" in str(e) and attempt == 0:
+                    continue  # model produced malformed JSON; one more try
                 if code == 429 or code >= 500:
                     time.sleep(min(2 ** attempt * 3, 30))
                     continue

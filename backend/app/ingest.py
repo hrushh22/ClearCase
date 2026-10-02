@@ -44,7 +44,9 @@ def build_sources(b: dict[str, Any]) -> list[dict[str, Any]]:
         {"display_number": m.get("display_number")})
     for f in b["custom_fields"]:
         v = f["value"]
-        shown = _money(v) if f.get("field_type") == "currency" else ("Yes" if v is True else "No" if v is False else str(v))
+        # Clio does not always return field_type; a plain number in a matter field is treated as money
+        is_money = f.get("field_type") == "currency" or (isinstance(v, (int, float)) and not isinstance(v, bool))
+        shown = _money(v) if is_money else ("Yes" if v is True else "No" if v is False else str(v))
         add("custom_field", f["id"], f["name"], None, f"{f['name']}: {shown}", {"field_type": f.get("field_type"), "value": v})
     for c in b["contacts"]:
         lines = [c.get("name"), c.get("relationship"), c.get("company"), c.get("email"), c.get("phone"), c.get("address")]

@@ -9,6 +9,11 @@ export default function Injuries({ d }: { d: any }) {
       <div className="text-xs text-slate-500">
         from {d.documents.length} documents ({scanned} scanned pages read by OCR) plus notes · {inj.method === "llm" ? "AI summary, every line cited" : "diagnosis lines found by rules"}
       </div>
+      {d.ai_coverage?.sampled_docs?.length > 0 && (
+        <div className="mt-1 rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">
+          Free-tier limit: AI read the first and last pages of {d.ai_coverage.sampled_docs.length} long documents. Every page is still searchable in the source viewer.
+        </div>
+      )}
       <div className="mt-3 max-h-[640px] space-y-3 overflow-auto pr-1">
         {inj.injuries.length === 0 && <div className="text-sm text-slate-500">No injury facts yet.</div>}
         {inj.injuries.map((i: any, k: number) => (

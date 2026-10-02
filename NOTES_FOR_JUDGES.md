@@ -25,6 +25,18 @@ Every value comes from Clio (or, offline only, the organizers' mirror of the sam
 - **Merkle inclusion proofs and true ZK range proofs.** Roadmap. What ships is signed selective disclosure (Ed25519 over `{claim, case_ref, issued_at, expires_at, source_hash}`).
 - **Users.** One attorney view ("attorney"); there is no login system.
 
+## Live Clio differs from the JSON mirror (and we read live)
+The live Sapini matter has 15 contacts (vs 10 in the JSON), 14 expenses (vs 5) and 31 documents. In place of the two large scanned
+bundles it has per-provider records and itemized bills, mostly text PDFs. ClearCase reads whatever Clio returns. Clio returns
+`statute_of_limitations` as a reference to the SOL task, so we resolve it to that task's due date.
+
+## Free-tier reality
+If a key has no quota (for example a Mistral key before the "Experiment" plan is activated; the API answers 429 with
+`x-ratelimit-limit-req-minute: 0`), ClearCase disables that provider for the run and fails over. Groq's free tier allows
+8,000 tokens/min per model, so we use two Groq buckets: `gpt-oss-20b` for bulk extraction and `gpt-oss-120b` for reasoning.
+With only Groq available, the AI reads every note, email and bill, but only the first and last 3 pages of long medical
+documents. The UI says so. All pages stay viewable and highlightable, and a re-sync with Mistral or Gemini available reads them in full.
+
 ## Data and privacy
 - Gemini and Mistral free tiers may use inputs for training. The organizers approved sending this sample data. A real firm would use paid, no-training endpoints.
 - Clio is never written to. Our data lives in SQLite (`clearcase.db`) plus caches under `backend/data/`, all gitignored.

@@ -115,6 +115,8 @@ def build_digest(content_hash: str) -> dict:
         "fact_stats": {r["s"] or "pending": r["n"] for r in db.query("SELECT verify_status s, COUNT(*) n FROM facts GROUP BY verify_status")},
         "extractors": {r["e"]: r["n"] for r in db.query("SELECT extractor e, COUNT(*) n FROM facts GROUP BY extractor")},
         "llm": {"providers": available_providers(), "usage": usage_report()},
+        "ai_coverage": {"sampled_docs": [r["source_id"] for r in db.query(
+            "SELECT source_id FROM extraction_runs WHERE source_type='document' AND extractor LIKE '%_sampled'")]},
     }
     digest["fact_ids"] = [f["fact_id"] for f in facts]
     return digest
@@ -127,7 +129,7 @@ def save_digest(d: dict) -> None:
                   (d["content_hash"], d["created_at"], d["record_count"], json.dumps(d["snapshot"]), json.dumps(d["kpis"]),
                    json.dumps(d["stage"]), json.dumps(d["timeline"]), json.dumps(d["top10"]), json.dumps(d["attention"]),
                    json.dumps(d["injuries"]), json.dumps(d["contact"]), json.dumps(d["waterfall"]), json.dumps(d["facts"]),
-                   json.dumps({k: d[k] for k in ("source", "documents", "fact_stats", "extractors", "llm", "fact_ids")})))
+                   json.dumps({k: d[k] for k in ("source", "documents", "fact_stats", "extractors", "llm", "fact_ids", "ai_coverage")})))
     db.set_setting("current_digest", d["content_hash"])
 
 

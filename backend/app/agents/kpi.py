@@ -51,28 +51,47 @@ def medical_specials(facts: list[dict]) -> dict:
 
 
 def provider_bills(facts: list[dict]) -> list[dict]:
-    """Latest verified amount per provider (bills) and per lien holder (liens). Deterministic."""
+    """One amount per provider (bills) and per lien holder (liens). Deterministic.
+
+    Clio charge entries (structured) are authoritative and summed per provider. For payees only
+    mentioned in text, the largest stated amount is kept (a bill's total is at least any line item).
+    """
     by_key: dict[str, dict] = {}
 
     def norm(name: str) -> str:
-        return re.sub(r"[^a-z]", "", re.sub(r"\b(inc|llc|pllc|pc|p\.c\.|the)\b", "", name.lower()))
+        return re.sub(r"[^a-z]", "", re.sub(r"\b(inc|llc|pllc|pc|p\.c\.|m\.?d\.?|the)\b", "", name.lower()))
 
-    for f in sorted([f for f in facts if f["type"] in ("bill", "lien") and f["amount"] and f.get("entity")
-                     and f["source_type"] != "custom_field"], key=lambda f: f.get("date") or ""):
+    cands = [f for f in facts if f["type"] in ("bill", "lien") and f["amount"] and f.get("entity") and f["source_type"] != "custom_field"]
+    cands.sort(key=lambda f: (f["source_type"] != "expense", f.get("date") or ""))  # structured charges first
+    for f in cands:
         n = norm(f["entity"])
         # "Medicaid" and "New York State Medicaid" are the same payee: merge when one name contains the other
         key = next((k for k in by_key if k.split(":", 1)[0] == f["type"] and (n in k.split(":", 1)[1] or k.split(":", 1)[1] in n)),
                    f"{f['type']}:{n}")
         cur = by_key.get(key)
+        structured = f["source_type"] == "expense"
         if not cur:
-            by_key[key] = {"name": f["entity"], "amount": float(f["amount"]), "kind": f["type"], "date": f.get("date"), "sources": [_src(f)]}
+            by_key[key] = {"name": f["entity"], "amount": float(f["amount"]), "kind": f["type"], "date": f.get("date"),
+                           "sources": [_src(f)], "structured": structured}
+            continue
+        if cur["structured"]:
+            if structured:
+                cur["amount"] += float(f["amount"])
+            cur["sources"].append(_src(f))
             continue
         if len(f["entity"]) > len(cur["name"]):
             cur["name"] = f["entity"]
-        if (f.get("date") or "") >= (cur.get("date") or ""):  # latest stated amount wins
+        if float(f["amount"]) > cur["amount"]:
             cur["amount"], cur["date"] = float(f["amount"]), f.get("date")
-        cur["sources"].insert(0, _src(f))
-    return sorted(by_key.values(), key=lambda x: (x["kind"] != "lien", -x["amount"]))
+            cur["sources"].insert(0, _src(f))
+        else:
+            cur["sources"].append(_src(f))
+    out = []
+    for v in by_key.values():
+        v["basis"] = "Clio charge entries" if v.pop("structured") else "Largest amount stated in the file"
+        v["amount"] = round(v["amount"], 2)
+        out.append(v)
+    return sorted(out, key=lambda x: (x["kind"] != "lien", -x["amount"]))
 
 
 def firm_spend(facts: list[dict]) -> dict:
@@ -92,6 +111,8 @@ class CoverageRead(BaseModel):
 
 COVERAGE_PROMPT = """Read these facts from a personal-injury file and describe the insurance coverage behind the case.
 Report only what the facts say. If an adverse party is self-insured, say so; never invent a policy limit.
+practical_cap is the ADVERSE party's bodily-injury liability limit per person (not the client's own no-fault or UM/UIM).
+The headline names whose policy it is (e.g. "$X per person, at-fault driver's policy").
 FACTS:
 {facts}"""
 
@@ -110,8 +131,20 @@ def coverage(facts: list[dict]) -> dict:
             cited_amounts = set(_amounts(" ".join(f["quote"] for f in cited)) + _amounts(quotes_text))
             ok = all(a in cited_amounts for a in _amounts(r.headline)) and \
                 (r.practical_cap is None or r.practical_cap in cited_amounts)
+            # the cap must come from a liability-layer quote, and the headline must not pin it on no-fault / UM
+            other_layer = r"no-fault|UM/UIM|\bUM\b|\bUIM\b|uninsured|underinsured|basic economic"
+            if ok and r.practical_cap:
+                backing = [f for f in cov if r.practical_cap in _amounts(f["quote"])]
+                ok = any(not re.search(other_layer, f["quote"], re.I) for f in backing) and \
+                    not re.search(other_layer, r.headline, re.I)
             if ok:
-                return {"kind": r.kind, "headline": r.headline, "value": r.practical_cap, "confirmed": r.confirmed,
+                # headline is built in code from checked values; the model's wording can misattribute whose policy it is
+                self_ins = any(re.search(r"self[- ]insured", f["quote"] + " " + f["text"], re.I) for f in cov)
+                if r.practical_cap:
+                    headline = f"${r.practical_cap:,.0f} per person liability limit" + ("; adverse authority self-insured" if self_ins else "")
+                else:
+                    headline = "Self-insured adverse party; no policy limit found" if self_ins else "No liability limit found in the file"
+                return {"kind": r.kind, "headline": headline, "value": r.practical_cap, "confirmed": r.confirmed,
                         "layers": r.layers, "basis": "Read from coverage facts (LLM), amounts checked against quotes",
                         "sources": [_src(f) for f in cited]}
         except LLMUnavailable:

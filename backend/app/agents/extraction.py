@@ -18,9 +18,10 @@ from typing import Any, Literal, Optional
 from pydantic import BaseModel, Field
 
 from .. import db
-from ..llm import LLMUnavailable, available_providers, complete_json
+from ..llm import LLMUnavailable, available_providers, bulk_capacity, complete_json, probe
 
 WORKERS = 5
+SAMPLE_EDGE = 3  # pages from each end of a long document when only the Groq free tier is available
 
 FactType = Literal["injury", "treatment", "provider", "bill", "lien", "payment", "coverage", "demand", "offer",
                    "deadline", "filing", "contact", "client_event", "expense", "valuation", "risk", "other"]
@@ -83,7 +84,8 @@ CF_TYPES = [  # (regex on field name, fact type)
 ]
 
 
-def structured_facts(sources: list[dict]) -> list[Fact]:
+def structured_facts(sources: list[dict], contact_names: list[str] | None = None) -> list[Fact]:
+    contact_names = contact_names or []
     facts: list[Fact] = []
     for s in sources:
         st, sid, text, meta = s["source_type"], s["source_id"], s["text"], s["meta"]
@@ -92,8 +94,9 @@ def structured_facts(sources: list[dict]) -> list[Fact]:
             ftype = next((t for rx, t in CF_TYPES if re.search(rx, name, re.I)), "other")
             value = meta.get("value")
             first_line = text.split("\n")[0]
-            amount = float(value) if meta.get("field_type") == "currency" and value is not None else None
-            facts.append(Fact(type=ftype, text=first_line, date=_date(value) if meta.get("field_type") == "date" else None,
+            is_money = meta.get("field_type") == "currency" or (isinstance(value, (int, float)) and not isinstance(value, bool))
+            amount = float(value) if is_money and value is not None else None
+            facts.append(Fact(type=ftype, text=first_line, date=_date(value) if meta.get("field_type") == "date" or re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(value)) else None,
                               amount=amount, source_type=st, source_id=sid, quote=" ".join(first_line.split()[:25]),
                               confidence=1.0))
         elif st == "task":
@@ -111,9 +114,15 @@ def structured_facts(sources: list[dict]) -> list[Fact]:
                               quote=" ".join(name.split()[:25]), confidence=1.0))
         elif st == "expense":
             first = text.split("\n")[0]
-            facts.append(Fact(type="expense", text=first + " - " + (text.split("\n\n", 1)[-1].split("\n")[0])[:120],
-                              date=s["date"], amount=meta.get("total"), source_type=st, source_id=sid,
-                              quote=first, confidence=1.0))
+            note = text.split("\n\n", 1)[-1]
+            # an expense entry whose note describes medical treatment charges is a provider's bill, not firm spend
+            is_bill = bool(re.search(r"treatment charges|medical charges|medical treatment", note, re.I))
+            entity = next((n for n in sorted(contact_names, key=len, reverse=True) if n and n.lower() in note.lower()), None)
+            is_bill = is_bill and bool(entity)
+            facts.append(Fact(type="bill" if is_bill else "expense",
+                              text=(f"{entity} charges: " if is_bill else "") + first + " - " + note.split("\n")[0][:120],
+                              date=s["date"], amount=meta.get("total"), entity=entity if is_bill else None, source_type=st,
+                              source_id=sid, quote=first, confidence=1.0))
         elif st == "matter":
             for line in text.split("\n"):
                 if re.match(r"(Open Date|Statute Of Limitations):", line):
@@ -306,6 +315,7 @@ def _save(facts: list[Fact], extractor: str, runs: list[tuple[str, str, str, str
 def run_extraction(progress=None) -> dict[str, int]:
     """Extract facts for every source whose content changed since the last run."""
     sources = [{**s, "meta": json.loads(s["meta_json"] or "{}")} for s in db.query("SELECT * FROM sources")]
+    probe()
     bundle = db.get_setting("bundle", {})
     client = (bundle.get("matter") or {}).get("client_name") or "the client"
     use_llm = bool(available_providers())
@@ -317,7 +327,8 @@ def run_extraction(progress=None) -> dict[str, int]:
     st_sources = [s for s in sources if s["source_type"] in structured_types]
     with db.tx() as c:
         c.execute(f"DELETE FROM facts WHERE extractor='structured'")
-    _save(structured_facts(st_sources), "structured", [])
+    names = [s["title"] for s in sources if s["source_type"] == "contact"]
+    _save(structured_facts(st_sources, names), "structured", [])
     stats["structured"] = len(st_sources)
 
     # notes + communications
@@ -346,13 +357,21 @@ def run_extraction(progress=None) -> dict[str, int]:
         stats["records"] += len(todo)
 
     # documents, page chunks
+    limited = use_llm and bulk_capacity() == "limited"
+    stats["sampled_docs"] = 0
     for doc in db.query("SELECT * FROM documents ORDER BY received_at"):
-        if _done("document", doc["id"], "all", doc["sha256"]):
+        pages = db.query("SELECT page, text FROM doc_pages WHERE doc_id=? ORDER BY page", (doc["id"],))
+        sample = limited and doc["doc_type"] != "bill" and len(pages) > 2 * SAMPLE_EDGE
+        expected = mode + ("_sampled" if sample else "")
+        row = db.one("SELECT source_sha, extractor FROM extraction_runs WHERE source_type='document' AND source_id=? AND part='all'", (doc["id"],))
+        if row and row["source_sha"] == doc["sha256"] and row["extractor"] == expected:
             stats["skipped"] += 1
             continue
-        pages = db.query("SELECT page, text FROM doc_pages WHERE doc_id=? ORDER BY page", (doc["id"],))
+        if sample:  # Groq-only free tier: read the first and last pages (history, diagnoses, summaries); rest stays searchable
+            pages = pages[:SAMPLE_EDGE] + pages[-SAMPLE_EDGE:]
+            stats["sampled_docs"] += 1
         facts: list[Fact] = []
-        used = mode
+        used = expected
         if use_llm:
             chunks = _doc_page_chunks(doc, pages)
             done = [0]
@@ -371,6 +390,7 @@ def run_extraction(progress=None) -> dict[str, int]:
                 for chunk_facts, how in pool.map(one, chunks):
                     facts += chunk_facts
                     used = "heuristic" if how == "heuristic" else used
+            stats["doc_pages_read"] = stats.get("doc_pages_read", 0) + len(pages)
             stats["doc_chunks"] += len(chunks)
         else:
             facts = heuristic_doc_facts(doc, pages)

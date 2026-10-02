@@ -24,12 +24,15 @@ GENERIC = {"services", "surgical", "orthopaedic", "orthopedic", "offices", "offi
 def provider_contacts(bundle: dict) -> list[dict]:
     out = []
     contacts = bundle.get("contacts", [])
+    company_names = {c.get("name") for c in contacts if c.get("type") == "Company"}
     for c in contacts:
         rel = c.get("relationship") or ""
-        if re.search(r"provider|hospital|treating|physician|clinic|therap|chiropract", rel, re.I) and c.get("type") == "Company":
+        # a doctor who works for a provider company is shared through that company, not separately
+        works_for_provider = c.get("type") == "Person" and c.get("company") in company_names
+        if re.search(r"provider|hospital|treating|physician|clinic|therap|chiropract", rel, re.I) and not works_for_provider:
             people = [p["name"] for p in contacts if p.get("company") and p.get("company") == c.get("name") and p["id"] != c["id"]]
             out.append({"id": c["id"], "name": c["name"], "relationship": rel, "email": c.get("email"), "people": people,
-                        "tokens": provider_tokens(c["name"], people)})
+                        "tokens": [c["name"].split()[-1].lower()] if c.get("type") == "Person" else provider_tokens(c["name"], people)})
     return out
 
 

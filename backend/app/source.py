@@ -171,6 +171,16 @@ def _normalize_live(raw: dict, docs: list[dict]) -> dict[str, Any]:
         })
     stages = sorted(raw.get("matter_stages") or [], key=lambda s: (s.get("order") is None, s.get("order") or 0))
     pa = ((m.get("practice_area") or {}).get("name"))
+    sol = m.get("statute_of_limitations")
+    if isinstance(sol, dict):  # Clio returns a reference to the SOL task / calendar entry, not a date
+        ref = str(sol.get("id"))
+        hit = next((t for t in raw["tasks"] if str(t["id"]) == ref), None) or \
+            next((e for e in raw["calendar_entries"] if str(e["id"]) == ref), None)
+        sol = ((hit or {}).get("due_at") or (hit or {}).get("start_at") or "")[:10] or None
+        if not sol:
+            sol_task = next((t for t in raw["tasks"] if t.get("statute_of_limitations")), None)
+            sol = ((sol_task or {}).get("due_at") or "")[:10] or None
+    m = {**m, "statute_of_limitations": sol}
     stage_names = [s["name"] for s in stages if not pa or ((s.get("practice_area") or {}).get("name") in (None, pa))]
     return {
         "matter": {
