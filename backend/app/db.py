@@ -68,6 +68,24 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
+# columns added after the first release: (table, column, type). Added in place on older databases.
+MIGRATIONS = [("share_claims", "category", "TEXT"), ("share_claims", "claim_key", "TEXT"),
+              ("share_claims", "superseded", "INTEGER DEFAULT 0"), ("change_events", "share_token", "TEXT")]
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    for table, col, typ in MIGRATIONS:
+        cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+        if col not in cols:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {typ}")
+    # claims created before keys existed: key = the id after the link prefix ("Ab12Cd34_stage" -> "stage")
+    for row in conn.execute("SELECT id FROM share_claims WHERE claim_key IS NULL").fetchall():
+        key = row[0].split("_", 1)[1] if "_" in row[0] else row[0]
+        key = "stage" if key.startswith("stage_") else "waterfall_position" if key == "waterfall" else key
+        conn.execute("UPDATE share_claims SET claim_key=? WHERE id=?", (key, row[0]))
+    conn.commit()
+
+
 def connect() -> sqlite3.Connection:
     global _initialized
     path = database_path()
@@ -78,6 +96,7 @@ def connect() -> sqlite3.Connection:
     if not _initialized:
         with _lock:
             conn.executescript(SCHEMA)
+            _migrate(conn)
             _initialized = True
     return conn
 

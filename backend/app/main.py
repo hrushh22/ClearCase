@@ -18,6 +18,7 @@ from .config import ROOT, ConfigError, clio_source, firm_name
 from .documents import find_page_for_quote
 from .llm import available_providers, usage_report
 from .signing import public_key_b64
+from .scenario import ordered_liens as _ordered_liens, provider_waterfall
 from .waterfall import DEFAULT_FEE_PCT, Lien, WaterfallInput, breakeven_gross, compute
 
 app = FastAPI(title="ClearCase", version="1.0")
@@ -165,14 +166,6 @@ class WaterfallIn(BaseModel):
     save: bool = False
 
 
-def _ordered_liens(d: dict, settings: dict) -> list[Lien]:
-    base = {l["name"]: l for l in d["waterfall"]["liens"]}
-    order = [n for n in settings.get("order", []) if n in base] + [n for n in base if n not in settings.get("order", [])]
-    per = settings.get("liens", {})
-    return [Lien(name=n, amount=base[n]["amount"], kind=base[n]["kind"], reduction=float(per.get(n, {}).get("reduction", 0)),
-                 include=bool(per.get(n, {}).get("include", True))) for n in order]
-
-
 @app.get("/api/waterfall/settings")
 def waterfall_settings():
     d = _digest_or_404()
@@ -191,6 +184,7 @@ def waterfall(inp: WaterfallIn):
     if inp.save:
         db.set_setting("waterfall", {"fee_pct": inp.fee_pct, "gross": inp.gross, "order": [l.name for l in inp.liens],
                                      "liens": {l.name: {"reduction": l.reduction, "include": l.include} for l in inp.liens}})
+        res["links_updated"] = len(sharing.refresh_links(d))  # a new scenario can move a provider's place in line
     return res
 
 
@@ -198,18 +192,6 @@ def waterfall(inp: WaterfallIn):
 def waterfall_reset():
     db.set_setting("waterfall", {})
     return waterfall_settings()
-
-
-def provider_waterfall(d: dict, provider: dict) -> dict:
-    """The firm's saved scenario, reduced to one provider's own row (other providers' amounts never leave)."""
-    s = db.get_setting("waterfall", {}) or {}
-    liens = _ordered_liens(d, s)
-    res = compute(WaterfallInput(gross=s.get("gross", d["waterfall"]["suggested_gross"]), fee_pct=s.get("fee_pct", DEFAULT_FEE_PCT),
-                                 expenses=[e["amount"] for e in d["waterfall"]["expenses"]], liens=liens))
-    rows = res["liens"]
-    for r in rows:
-        r["mine"] = mentions(r["name"], provider["tokens"])
-    return {"liens": [r for r in rows if r["mine"]], "count": len(rows)}
 
 
 # ------------------------------------------------------------------------ sharing
@@ -256,6 +238,12 @@ def links():
     return sharing.list_links()
 
 
+@app.post("/api/share/refresh")
+def refresh_links():
+    """Push the current digest to every live provider link now (also runs after every sync)."""
+    return {"updated": sharing.refresh_links(_digest_or_404())}
+
+
 @app.post("/api/share/links/{token}/revoke")
 def revoke(token: str):
     sharing.revoke(token)
@@ -263,8 +251,8 @@ def revoke(token: str):
 
 
 @app.get("/api/provider/{token}")
-def provider_portal(token: str, request: Request):
-    out = sharing.provider_view(token, request.client.host if request.client else "", request.headers.get("user-agent", ""))
+def provider_portal(token: str, request: Request, poll: bool = False):
+    out = sharing.provider_view(token, request.client.host if request.client else "", request.headers.get("user-agent", ""), poll=poll)
     if out.get("error") == "not_found":
         raise HTTPException(404, "Link not found")
     return out

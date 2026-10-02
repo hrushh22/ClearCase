@@ -82,6 +82,10 @@ export default function ShareBuilder({ d }: { d: any }) {
               </label>
             ))}
           </div>
+          <div className="mt-3 rounded-lg bg-sky-50 p-2 text-xs text-sky-900">
+            The link stays live: after every sync, shared items that change are re-signed, items that no longer apply are withdrawn, and new
+            status, needs, visit and bill items flow in if you shared that category. Anything else needs a new share.
+          </div>
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t pt-4">
             <span className="text-sm">Link expires in</span>
             <select value={days} onChange={(e) => setDays(Number(e.target.value))} className="rounded border px-2 py-1 text-sm">
@@ -118,7 +122,9 @@ export default function ShareBuilder({ d }: { d: any }) {
                 <td>{fmtDateTime(l.expires_at)}</td>
                 <td>{l.claim_count}</td>
                 <td>{l.opens.length ? <span title={l.opens.map((o: any) => fmtDateTime(o.opened_at)).join("\n")}>{l.opens.length}× · last {fmtDateTime(l.opens[0].opened_at)}</span> : <span className="text-slate-400">not yet</span>}
-                  {l.notify_email && <span className="chip ml-1 bg-sky-100 text-sky-800">subscribed</span>}</td>
+                  {l.notify_email && <span className="chip ml-1 bg-sky-100 text-sky-800">subscribed</span>}
+                  {l.updates?.length > 0 && <div className="text-[11px] text-slate-500" title={l.updates.map((u: any) => u.summary).join(" | ")}>
+                    {l.updates.length} update{l.updates.length === 1 ? "" : "s"} pushed · last {fmtDateTime(l.updates[0].created_at)}</div>}</td>
                 <td className="text-right">
                   <a className="btn-ghost" href={`/p/${l.token}`} target="_blank">Open</a>
                   {!l.revoked ? <button className="btn-ghost text-rose-600" onClick={() => api.revoke(l.token).then(refreshLinks)}>Revoke</button> : <span className="text-xs">revoked</span>}

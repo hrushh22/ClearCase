@@ -156,9 +156,7 @@ def emit_changes(prev: dict | None, cur: dict) -> None:
             visible = 1 if it["kind"] == "stage" else 0
             c.execute("INSERT INTO change_events(created_at,kind,summary,source_ref,provider_visible,digest_hash) VALUES(?,?,?,?,?,?)",
                       (db.now_iso(), it["kind"], it["summary"], json.dumps(it.get("source")), visible, cur["content_hash"]))
-    if any(it["kind"] == "stage" for it in diff["items"]):
-        from . import sharing
-        sharing.on_stage_change(cur)
+
 
 
 def run_pipeline(force: bool = False) -> dict:
@@ -183,6 +181,12 @@ def run_pipeline(force: bool = False) -> dict:
         d["pipeline_stats"] = {"extraction": stats, "verifier": vstats}
         save_digest(d)
         emit_changes(prev, d)
+        _progress("Updating shared provider links")
+        try:  # every live provider link picks up changed, new or withdrawn items
+            from . import sharing
+            sharing.refresh_links(d)
+        except Exception:
+            traceback.print_exc()
         _progress("Building Case X-Ray")
         try:  # X-Ray is additive: a failure here never blocks the digest
             from .xray import service as xray_service

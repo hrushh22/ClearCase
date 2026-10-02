@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import nacl from "tweetnacl";
 import ProviderView, { type ProviderClaim } from "../components/ProviderView";
@@ -23,7 +23,14 @@ export default function ProviderPortal() {
   const [data, setData] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [sub, setSub] = useState<string | null>(null);
-  useEffect(() => { api.provider(token).then(setData).catch((e) => setErr(e.message)); }, [token]);
+  const [checked, setChecked] = useState<Date | null>(null);
+  const openedAt = useRef<string>(new Date().toISOString());
+  useEffect(() => {
+    api.provider(token).then((d) => { setData(d); setChecked(new Date()); }).catch((e) => setErr(e.message));
+    // live: check for case movement every 30 s (background checks are not logged as new opens)
+    const t = setInterval(() => api.provider(token, true).then((d) => { setData(d); setChecked(new Date()); }).catch(() => {}), 30000);
+    return () => clearInterval(t);
+  }, [token]);
 
   if (err) return <Shell><div className="card p-8 text-center text-slate-600">This link was not found.</div></Shell>;
   if (!data) return <Shell><div className="p-8 text-center text-slate-500">Loading…</div></Shell>;
@@ -38,11 +45,16 @@ export default function ProviderPortal() {
   // the stage claim may have been re-issued on movement; keep the latest one of each kind
   const claims: ProviderClaim[] = data.claims.map((c: any) => {
     const v = verifyClaim(c.payload, c.signature, data.public_key);
-    return { id: c.id, text: v.pkg.claim, category: c.category || "status", verified: v.ok ? "ok" : "bad", issued_at: v.pkg.issued_at };
+    return { id: c.id, text: v.pkg.claim, category: c.category || "status", verified: v.ok ? "ok" : "bad", issued_at: v.pkg.issued_at,
+      fresh: !!v.pkg.issued_at && v.pkg.issued_at > openedAt.current.slice(0, 19) };
   });
   const allOk = claims.every((c) => c.verified === "ok");
   return (
     <Shell firm={data.firm_name}>
+      <div className="mb-2 flex items-center justify-end gap-2 text-xs text-slate-500">
+        <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-500" aria-hidden />
+        Live · last case update {new Date(data.updated_at).toLocaleString()} · checked {checked ? checked.toLocaleTimeString() : "…"}
+      </div>
       <div className={`mb-4 rounded-xl p-3 text-sm ${allOk ? "bg-emerald-50 text-emerald-900" : "bg-rose-50 text-rose-900"}`}>
         {allOk ? `Every item below was checked in your browser: it came from ${data.firm_name} and has not been changed.`
           : "Some items could not be verified. Treat them with caution and contact the firm."}

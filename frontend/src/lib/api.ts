@@ -46,7 +46,8 @@ export const api = {
   createLink: (body: any) => req<any>("/api/share/links", { method: "POST", body: JSON.stringify(body) }),
   links: () => req<any[]>("/api/share/links"),
   revoke: (token: string) => req<any>(`/api/share/links/${token}/revoke`, { method: "POST" }),
-  provider: (token: string) => req<any>(`/api/provider/${token}`),
+  provider: (token: string, poll = false) => req<any>(`/api/provider/${token}${poll ? "?poll=true" : ""}`),
+  refreshLinks: () => req<any>("/api/share/refresh", { method: "POST" }),
   subscribe: (token: string, email: string) =>
     req<any>(`/api/provider/${token}/subscribe`, { method: "POST", body: JSON.stringify({ email }) }),
   events: () => req<any[]>("/api/events"),

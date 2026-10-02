@@ -1,7 +1,15 @@
-"""Provider share links: server-side allowlist, signed claims, expiry, revocation, access log.
+"""Provider share links: server-side allowlist, signed claims, expiry, revocation, access log, live refresh.
 
 The provider endpoint returns ONLY claims the attorney approved, as signed packages. Nothing is
 filtered in the frontend; unapproved data never leaves the server.
+
+Live updates: every claim on a link has a stable key (e.g. "stage", "bill_mccullochortho", "need_<task id>").
+After each sync, `refresh_links` re-derives that provider's items from the new digest:
+  * an approved item whose text changed is re-signed; the old version is retired (superseded)
+  * an approved item that no longer applies (e.g. the request was completed) is withdrawn
+  * NEW items appear automatically only in the low-risk categories the attorney already shared
+    (status, what the firm needs, visits, the office's own bill); anything else needs a new share
+Each change is written to that link's update feed, and subscribers are emailed (or a mocked email is logged).
 """
 from __future__ import annotations
 
@@ -15,11 +23,43 @@ import httpx
 from . import db
 from .agents.share_policy import build_candidates, provider_contacts
 from .config import env, firm_name
+from .scenario import provider_waterfall, waterfall_text
 from .signing import public_key_b64, sign_claim
+
+AUTO_CATEGORIES = {"status", "needs", "treatment", "bills"}  # new items in these flow to an approved link automatically
 
 
 def _now() -> datetime:
     return datetime.now(timezone.utc).replace(microsecond=0)
+
+
+def _case_ref(digest: dict) -> str:
+    return f"{digest['snapshot'].get('display_number') or digest['snapshot']['matter_id']}"
+
+
+def _items(digest: dict, provider: dict) -> dict[str, dict]:
+    """Everything this provider could be shown right now, by stable key: {key: {text, category, source_hash}}."""
+    items = {c["id"]: {"text": c["text"], "category": c["category"], "source_hash": c["source_hash"]}
+             for c in build_candidates(digest, provider)}
+    wt = waterfall_text(provider_waterfall(digest, provider))
+    if wt:
+        text, row = wt
+        items["waterfall_position"] = {"text": text, "category": "bills", "row": row,
+                                       "source_hash": hashlib.sha256(json.dumps(row, sort_keys=True).encode()).hexdigest()}
+    return items
+
+
+def _insert_claim(c, token: str, key: str, item: dict, case_ref: str, expires: str) -> None:
+    signed = sign_claim(item["text"], case_ref, item["source_hash"], expires)
+    c.execute("INSERT INTO share_claims(id,share_token,claim_text,payload_json,source_hash,signature,issued_at,expires_at,category,claim_key,superseded) "
+              "VALUES(?,?,?,?,?,?,?,?,?,?,0)", (f"{token[:8]}_{key}_{secrets.token_hex(3)}", token, signed["package"]["claim"], signed["payload"],
+                                               signed["package"]["source_hash"], signed["signature"], signed["package"]["issued_at"], expires,
+                                               item["category"], key))
+
+
+def _event(c, token: str, summary: str, kind: str = "provider_update") -> None:
+    c.execute("INSERT INTO change_events(created_at,kind,summary,source_ref,provider_visible,share_token) VALUES(?,?,?,?,1,?)",
+              (db.now_iso(), kind, summary, None, token))
 
 
 def create_link(digest: dict, provider_id: str, approved_ids: list[str], days: int = 30, waterfall: dict | None = None) -> dict:
@@ -27,37 +67,77 @@ def create_link(digest: dict, provider_id: str, approved_ids: list[str], days: i
     provider = providers.get(provider_id)
     if not provider:
         raise ValueError("Unknown provider")
-    # re-derive candidates server-side; the client only sends ids, never claim text
-    cands = {c["id"]: c for c in build_candidates(digest, provider)}
-    approved = [cands[i] for i in approved_ids if i in cands]
+    # re-derive items server-side; the client only sends ids, never claim text
+    items = _items(digest, provider)
+    approved = {k: items[k] for k in approved_ids if k in items}
     token = secrets.token_urlsafe(18)
     expires = (_now() + timedelta(days=days)).isoformat()
-    case_ref = f"{digest['snapshot'].get('display_number') or digest['snapshot']['matter_id']}"
-    claims = []
-    for c in approved:
-        signed = sign_claim(c["text"], case_ref, c["source_hash"], expires)
-        claims.append({"id": f"{token[:8]}_{c['id']}", "category": c["category"], **signed})
-    wf = None
-    if waterfall and "waterfall_position" in approved_ids:
-        mine = [r for r in waterfall.get("liens", []) if r.get("mine")]
-        if mine:
-            r = mine[0]
-            text = (f"Your office's balance of ${r['billed']:,.2f} is number {r['position']} of {waterfall.get('count')} in the payment line "
-                    f"under the firm's current working scenario.")
-            signed = sign_claim(text, case_ref, hashlib.sha256(json.dumps(r, sort_keys=True).encode()).hexdigest(), expires)
-            claims.append({"id": f"{token[:8]}_waterfall", "category": "bills", **signed})
-            wf = {"billed": r["billed"], "net": r["net"], "position": r["position"], "count": waterfall.get("count"),
-                  "status": r.get("status")}
+    categories = sorted({v["category"] for v in approved.values()})
+    wf = approved.get("waterfall_position", {}).get("row")
     with db.tx() as c:
         c.execute("INSERT INTO share_links(token,provider_name,created_at,expires_at,allowed_claims_json,revoked) VALUES(?,?,?,?,?,0)",
                   (token, provider["name"], _now().isoformat(), expires,
-                   json.dumps({"provider_id": provider_id, "approved_ids": approved_ids, "waterfall": wf,
-                               "categories": sorted({x["category"] for x in approved})})))
-        for cl in claims:
-            c.execute("INSERT INTO share_claims(id,share_token,claim_text,payload_json,source_hash,signature,issued_at,expires_at,category) "
-                      "VALUES(?,?,?,?,?,?,?,?,?)", (cl["id"], token, cl["package"]["claim"], cl["payload"], cl["package"]["source_hash"],
-                                                    cl["signature"], cl["package"]["issued_at"], expires, cl["category"]))
-    return {"token": token, "expires_at": expires, "claims": len(claims)}
+                   json.dumps({"provider_id": provider_id, "approved_ids": list(approved), "waterfall": wf, "categories": categories,
+                               "auto_categories": sorted(AUTO_CATEGORIES & set(categories))})))
+        for key, item in approved.items():
+            _insert_claim(c, token, key, item, _case_ref(digest), expires)
+    return {"token": token, "expires_at": expires, "claims": len(approved)}
+
+
+def _active_claims(token: str) -> list[dict]:
+    return db.query("SELECT id, claim_key, claim_text, payload_json, signature, issued_at, category FROM share_claims "
+                    "WHERE share_token=? AND COALESCE(superseded,0)=0 ORDER BY issued_at", (token,))
+
+
+def refresh_links(digest: dict) -> dict:
+    """Bring every live link up to date with the latest digest. Returns {token: [change summaries]}."""
+    providers = {p["id"]: p for p in provider_contacts(db.get_setting("bundle", {}))}
+    report: dict[str, list[str]] = {}
+    for link in db.query("SELECT * FROM share_links WHERE revoked=0 AND expires_at>?", (_now().isoformat(),)):
+        allowed = json.loads(link["allowed_claims_json"] or "{}")
+        provider = providers.get(allowed.get("provider_id"))
+        if not provider:
+            continue
+        items = _items(digest, provider)
+        auto = set(allowed.get("auto_categories") or (AUTO_CATEGORIES & set(allowed.get("categories", []))))
+        approved = set(allowed.get("approved_ids", []))
+        wanted = approved | {k for k, v in items.items() if v["category"] in auto}
+        current = {c["claim_key"]: c for c in _active_claims(link["token"])}
+        changes: list[str] = []
+        with db.tx() as c:
+            for key in sorted(wanted | set(current)):
+                item, cur = items.get(key), current.get(key)
+                if key not in wanted:
+                    continue
+                if item is None:
+                    if cur:  # no longer true or no longer needed: withdraw it
+                        c.execute("UPDATE share_claims SET superseded=1 WHERE id=?", (cur["id"],))
+                        changes.append(f"No longer applies: {cur['claim_text']}")
+                    continue
+                if cur and cur["claim_text"] == item["text"]:
+                    continue
+                if cur:
+                    c.execute("UPDATE share_claims SET superseded=1 WHERE id=?", (cur["id"],))
+                _insert_claim(c, link["token"], key, item, _case_ref(digest), link["expires_at"])
+                changes.append(("Updated: " if cur else "New: ") + item["text"])
+            for ch in changes:
+                _event(c, link["token"], ch)
+            if changes:
+                allowed["approved_ids"] = sorted(approved | {k for k in wanted if k in items})
+                if "waterfall_position" in items and "waterfall_position" in wanted:
+                    allowed["waterfall"] = items["waterfall_position"]["row"]
+                allowed["categories"] = sorted(set(allowed.get("categories", [])) | {items[k]["category"] for k in wanted if k in items})
+                c.execute("UPDATE share_links SET allowed_claims_json=? WHERE token=?", (json.dumps(allowed), link["token"]))
+        if changes:
+            report[link["token"]] = changes
+            if link.get("notify_email"):
+                send_email(link["notify_email"], f"Case update from {firm_name()}",
+                           "\n".join(changes[:10]) + "\n\nOpen your ClearCase link for the signed details.")
+    return report
+
+
+def on_stage_change(digest: dict) -> None:  # kept for callers; stage changes are covered by refresh_links
+    refresh_links(digest)
 
 
 def list_links() -> list[dict]:
@@ -65,7 +145,8 @@ def list_links() -> list[dict]:
     for r in rows:
         r["allowed"] = json.loads(r.pop("allowed_claims_json") or "{}")
         r["opens"] = db.query("SELECT opened_at, ip_hash, user_agent FROM access_log WHERE token=? ORDER BY opened_at DESC", (r["token"],))
-        r["claim_count"] = (db.one("SELECT COUNT(*) n FROM share_claims WHERE share_token=?", (r["token"],)) or {}).get("n", 0)
+        r["claim_count"] = len(_active_claims(r["token"]))
+        r["updates"] = db.query("SELECT created_at, summary FROM change_events WHERE share_token=? ORDER BY id DESC LIMIT 20", (r["token"],))
     return rows
 
 
@@ -74,29 +155,29 @@ def revoke(token: str) -> None:
         c.execute("UPDATE share_links SET revoked=1 WHERE token=?", (token,))
 
 
-def provider_view(token: str, ip: str, user_agent: str) -> dict:
+def provider_view(token: str, ip: str, user_agent: str, poll: bool = False) -> dict:
+    """What the provider sees. `poll=True` = the page's own background refresh: not logged as a new open."""
     link = db.one("SELECT * FROM share_links WHERE token=?", (token,))
     if not link:
         return {"error": "not_found"}
-    with db.tx() as c:
-        c.execute("INSERT INTO access_log(token,opened_at,ip_hash,user_agent) VALUES(?,?,?,?)",
-                  (token, db.now_iso(), hashlib.sha256(ip.encode()).hexdigest()[:12], (user_agent or "")[:160]))
+    if not poll:
+        with db.tx() as c:
+            c.execute("INSERT INTO access_log(token,opened_at,ip_hash,user_agent) VALUES(?,?,?,?)",
+                      (token, db.now_iso(), hashlib.sha256(ip.encode()).hexdigest()[:12], (user_agent or "")[:160]))
     if link["revoked"]:
         return {"error": "revoked", "firm_name": firm_name()}
     if link["expires_at"] < _now().isoformat():
         return {"error": "expired", "firm_name": firm_name()}
     allowed = json.loads(link["allowed_claims_json"] or "{}")
-    claims = db.query("SELECT id, claim_text, payload_json, signature, issued_at, expires_at, category FROM share_claims WHERE share_token=? "
-                      "ORDER BY issued_at", (token,))
-    events = []
-    if "status" in allowed.get("categories", []):
-        events = db.query("SELECT created_at, summary FROM change_events WHERE provider_visible=1 AND created_at>=? ORDER BY created_at DESC",
-                          (link["created_at"],))
+    claims = _active_claims(token)
+    events = db.query("SELECT created_at, summary FROM change_events WHERE share_token=? ORDER BY id DESC LIMIT 50", (token,))
     return {"firm_name": firm_name(), "provider_name": link["provider_name"], "created_at": link["created_at"],
             "expires_at": link["expires_at"], "public_key": public_key_b64(),
-            "claims": [{"id": c["id"], "category": c["category"], "payload": c["payload_json"], "signature": c["signature"]} for c in claims],
+            "claims": [{"id": c["id"], "key": c["claim_key"], "category": c["category"], "payload": c["payload_json"],
+                        "signature": c["signature"]} for c in claims],
+            "updated_at": max([c["issued_at"] for c in claims] or [link["created_at"]]),
             "categories": allowed.get("categories", []), "waterfall": allowed.get("waterfall"), "events": events,
-            "notify_email": link.get("notify_email")}
+            "notify_email": link.get("notify_email"), "auto_categories": allowed.get("auto_categories", [])}
 
 
 def subscribe(token: str, email: str) -> dict:
@@ -106,26 +187,6 @@ def subscribe(token: str, email: str) -> dict:
     with db.tx() as c:
         c.execute("UPDATE share_links SET notify_email=? WHERE token=?", (email, token))
     return {"ok": True, "email_mode": "resend" if env("RESEND_API_KEY") else "mocked (in-app feed only; no RESEND_API_KEY)"}
-
-
-def on_stage_change(digest: dict) -> None:
-    """Re-issue a signed stage claim on every live link that shares status, and notify subscribers."""
-    st = digest["stage"]
-    for link in db.query("SELECT * FROM share_links WHERE revoked=0 AND expires_at>?", (_now().isoformat(),)):
-        allowed = json.loads(link["allowed_claims_json"] or "{}")
-        if "stage" not in allowed.get("approved_ids", []) or not st.get("evidence"):
-            continue
-        from .agents.share_policy import source_hash
-        ev = st["evidence"][0]
-        signed = sign_claim(f"Current stage: {st['stage']}.", digest["snapshot"].get("display_number") or "",
-                            source_hash(ev["source_type"], ev["source_id"], ev.get("page")), link["expires_at"])
-        with db.tx() as c:
-            c.execute("INSERT INTO share_claims(id,share_token,claim_text,payload_json,source_hash,signature,issued_at,expires_at,category) "
-                      "VALUES(?,?,?,?,?,?,?,?,?)", (f"{link['token'][:8]}_stage_{secrets.token_hex(3)}", link["token"],
-                                                    signed["package"]["claim"], signed["payload"], signed["package"]["source_hash"],
-                                                    signed["signature"], signed["package"]["issued_at"], link["expires_at"], "status"))
-        if link.get("notify_email"):
-            send_email(link["notify_email"], f"Case update from {firm_name()}", f"The case moved to: {st['stage']}. Open your link for details.")
 
 
 def send_email(to: str, subject: str, text: str) -> str:

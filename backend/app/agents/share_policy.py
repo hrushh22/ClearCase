@@ -45,6 +45,11 @@ def provider_tokens(name: str, people: list[str]) -> list[str]:
     return toks[:4]
 
 
+def _slug(name: str) -> str:
+    """Stable key part from a name, so a claim keeps its identity across syncs."""
+    return re.sub(r"[^a-z0-9]", "", (name or "").lower())[:24]
+
+
 def mentions(text: str, tokens: list[str]) -> bool:
     t = (text or "").lower()
     return any(tok in t for tok in tokens)
@@ -83,21 +88,21 @@ def build_candidates(digest: dict, provider: dict) -> list[dict]:
                             "Coverage: " + cov["headline"] + ".", "coverage", cov["sources"][0]))
     for i, b in enumerate(digest["kpis"]["specials"].get("providers", [])):
         if b["kind"] == "bill" and mentions(b["name"], toks) and b.get("sources"):
-            cands.append(_claim(f"bill_{i}", f"Your office's bill on file with the firm: ${b['amount']:,.2f}.", "bills", b["sources"][0]))
+            cands.append(_claim(f"bill_{_slug(b['name'])}", f"Your office's bill on file with the firm: ${b['amount']:,.2f}.", "bills", b["sources"][0]))
     for i, b in enumerate(digest["kpis"]["specials"].get("providers", [])):
         if not mentions(b["name"], toks) and b.get("sources"):
-            cands.append(_claim(f"otherbill_{i}", f"{b['name']} {b['kind']}: ${b['amount']:,.2f}.", "other_providers", b["sources"][0]))
+            cands.append(_claim(f"otherbill_{_slug(b['name'])}", f"{b['name']} {b['kind']}: ${b['amount']:,.2f}.", "other_providers", b["sources"][0]))
             break
     for i, w in enumerate(digest["attention"].get("waiting", [])):
         if mentions((w.get("waiting_on") or "") + " " + w["title"], toks):
             src = {"source_type": w["source_type"], "source_id": w["source_id"], "page": None, "quote": w["title"]}
-            cands.append(_claim(f"need_{i}", f"The firm needs from your office: {w.get('detail') or w['title']}", "needs", src))
+            cands.append(_claim(f"need_{w['source_id']}", f"The firm needs from your office: {w.get('detail') or w['title']}", "needs", src))
     for i, u in enumerate(digest["attention"].get("upcoming", [])):
         is_visit = re.search(r"treatment|appointment|visit|surgery|arthroscopy|therapy|consult|follow-up", u["title"], re.I) \
             and not re.search(r"\bcall\b|file review|client appointment", u["title"], re.I)
         if u["kind"] == "calendar" and is_visit and mentions(u["title"], toks):
             src = {"source_type": u["source_type"], "source_id": u["source_id"], "page": None, "quote": u["title"]}
-            cands.append(_claim(f"visit_{i}", f"Patient's next scheduled visit: {u['due']} ({u['title']}).", "treatment", src))
+            cands.append(_claim(f"visit_{u['source_id']}", f"Patient's next scheduled visit: {u['due']} ({u['title']}).", "treatment", src))
     # supported facts that mention this provider, plus a few strategy facts the agent should hold back
     facts = [f for f in digest["facts"] if f.get("verify_status") == "supported"]
     already = {c["source"].get("fact_id") for c in cands if c.get("source")}
