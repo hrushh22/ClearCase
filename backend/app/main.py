@@ -304,4 +304,6 @@ if _dist.exists():
 
     @app.get("/{path:path}")
     def spa(path: str):
+        if path.startswith(("api/", "auth/", ".well-known/")):  # unknown API paths are 404s, never the app shell
+            raise HTTPException(404, "Not found")
         return FileResponse(_dist / "index.html")

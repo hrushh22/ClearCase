@@ -120,8 +120,9 @@ def propositions(facts: list[dict], issues: list[dict], injury: dict, kpis: dict
         lambda i: i.get("kind") == "date")
     for r in injury["regions"]:
         sides = "/".join(r["sides"])
+        region_ids = set(_ids_for_region(facts, r["key"]))
         add(f"p_injury_{r['key']}", f"Injury: {(sides + ' ') if sides else ''}{r['label'].lower()}", "injury",
-            [f for f in facts if f["fact_id"] in set(_ids_for_region(facts, r["key"]))], lambda i, k=r["key"]: i.get("region") == k)
+            [f for f in facts if f["fact_id"] in region_ids], lambda i, k=r["key"]: i.get("region") == k)
     add("p_treatment", "Treatment chronology is documented", "treatment", [f for f in facts if f["type"] == "treatment"],
         lambda i: i["issue_type"] == "timeline_gap" or i.get("kind") in ("records", "procedure", "chronology"))
     spec = (kpis or {}).get("specials", {}).get("value")

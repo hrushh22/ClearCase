@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, Route, Routes } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import ShareBuilder from "./pages/ShareBuilder";
+import CaseXRay from "./pages/CaseXRay";
 import ProviderPortal from "./pages/ProviderPortal";
 import { SourceProvider } from "./components/SourceViewer";
 import { api, fmtDateTime } from "./lib/api";
@@ -51,6 +52,7 @@ function Attorney() {
             </div>
             <nav className="flex gap-1">
               <NavLink to="/" end className={({ isActive }) => `btn ${isActive ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}>Case digest</NavLink>
+              <NavLink to="/xray" className={({ isActive }) => `btn ${isActive ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}>Case X-Ray</NavLink>
               <NavLink to="/share" className={({ isActive }) => `btn ${isActive ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}>Share with providers</NavLink>
             </nav>
             <div className="flex rounded-lg bg-slate-100 p-0.5 text-sm">
@@ -102,6 +104,7 @@ function Attorney() {
             <Routes>
               <Route path="/" element={<Dashboard d={d} mode={mode} />} />
               <Route path="/share" element={<ShareBuilder d={d} />} />
+              <Route path="/xray" element={<CaseXRay d={d} />} />
             </Routes>
           )}
         </main>

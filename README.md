@@ -25,6 +25,18 @@ ClearCase reads one matter (Sapini) live from Clio Manage, read-only. It turns a
 - Links **expire and can be revoked**. Every open is written to an **access log**. Providers can ask to be **notified when the case moves**: stage changes re-issue a signed stage claim and send an email (Resend if configured, otherwise a labeled in-app mock).
 - **The allowlist is enforced on the server.** The provider endpoint only ever returns signed claims the attorney approved. Nothing is filtered in the browser.
 
+**Case X-Ray** (`/xray`, attorney-only)
+- **Case Constellation:** an interactive evidence graph built from verified facts (pan, zoom, drag, filter, click any edge or node). Documents and notes → facts → propositions and issues → providers, parties and injuries, with typed edges (supports, contradicts, missing evidence for, treated by, billed by, depends on). **Show Me Why** isolates the evidence chain behind any proposition, injury or fact, and every node opens the source viewer at the cited page.
+- **Contradiction Inspector:** deterministic checks first (incident dates, Clio charge totals vs. stated amounts, liability limits, lien amounts, entries dated before the incident, inconsistencies the file itself records). Then one cached AI pass pairs facts that conflict in meaning. Results show side by side, with both sources one click away. ClearCase never decides which side is right.
+- **Evidence Gap Detector + care-chain Gap Map:** providers without records or bills, imaging without reports, recommended procedures with no record of a date, material the file says is outstanding, open requests waiting on others, and chronology gaps. Framed as "ClearCase could not locate expected supporting evidence in the available case file." **Resolve this gap** drafts a records request or follow-up, creates an internal follow-up, or marks the issue reviewed, snoozed or explained. All of this is stored in ClearCase; nothing is sent and nothing is written to Clio.
+- **Evidence coverage:** a support state per key proposition (well corroborated / supported / limited / incomplete / conflicting) from countable components, with the rule shown. No percentages and no outcome scores.
+- **Injury X-Ray map:** body regions only where the text names a body part (side only when stated). Each region shows its findings, imaging, treatment, providers, known billed total and issues. Anything else stays unmapped.
+- **Stress Test My Case:** a supporting analyst, an adversarial reviewer (using only the file) and an evidence judge. Every item must cite real, verified facts or it is rejected.
+- **AI Spotlight:** steps through the highest-ranked open issues with a deterministic ranking (severity, deadline, money, facts affected, recency).
+- **What changed and Time Travel:** issue lifecycle (first detected / resolved / reopened) and a "New evidence impact" strip after each sync. The Time Travel slider reconstructs "what the file showed as of [date]" from persisted facts without calling an LLM.
+
+> Case X-Ray evaluates consistency and evidence completeness within the available file. It does not determine legal truth, predict case outcomes, or replace attorney judgment.
+
 ## How it works
 
 ```
@@ -100,6 +112,7 @@ backend/app/        main.py (API), clio_client.py (GET-only), clio_auth.py, sour
                     ingest.py, documents.py (OCR + highlight locator), llm.py (routing, failover, cache),
                     digest.py (pipeline + cache), waterfall.py, signing.py, sharing.py
 backend/app/agents/ extraction, verifier, kpi, stage, priority, timeline (+ injuries), share_policy, code_agents
+backend/app/xray/   Case X-Ray: common, contradictions, gaps, evidence_quality (+ injury map), graph, stress_test, service, routes
 backend/tests/      read-only guard, waterfall, verifier, signing
 frontend/src/       pages (Dashboard, ShareBuilder, ProviderPortal) and components (Snapshot, KpiCards,
                     Waterfall, Tracker, Timeline with time travel, Top10, Attention, ChangesFeed, Injuries,

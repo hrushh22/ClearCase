@@ -161,6 +161,9 @@ def test_xray_only_on_attorney_routes():
     paths = [r.path for r in app.routes if hasattr(r, "path")]
     assert any(p.startswith("/api/attorney/xray") for p in paths)
     assert not any("xray" in p for p in paths if p.startswith("/api/provider"))
+    from fastapi.testclient import TestClient
+    r = TestClient(app).get("/api/provider/anytoken/xray")
+    assert r.status_code == 404 and "issues" not in r.text
     import inspect
     from app import sharing
     assert "xray" not in inspect.getsource(sharing)

@@ -50,6 +50,10 @@ export const api = {
   subscribe: (token: string, email: string) =>
     req<any>(`/api/provider/${token}/subscribe`, { method: "POST", body: JSON.stringify({ email }) }),
   events: () => req<any[]>("/api/events"),
+  xray: (asOf?: string) => req<any>(`/api/attorney/xray${asOf ? `?as_of=${asOf}` : ""}`),
+  xrayAction: (issueId: string, action_type: string, content?: string) =>
+    req<any>(`/api/attorney/xray/issues/${issueId}/actions`, { method: "POST", body: JSON.stringify({ action_type, content }) }),
+  stressTest: (force = false) => req<any>(`/api/attorney/xray/stress-test?force=${force}`, { method: "POST" }),
 };
 
 export const money = (v?: number | null, digits = 0) =>

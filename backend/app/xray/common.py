@@ -5,6 +5,7 @@ import hashlib
 import json
 import re
 from datetime import date
+from functools import lru_cache
 
 from .. import db
 from ..agents.verifier import VISIBLE
@@ -25,8 +26,17 @@ REGIONS: list[tuple[str, str, str]] = [  # (key, label, regex)
 REGION_LABEL = {k: label for k, label, _ in REGIONS}
 
 
+@lru_cache(maxsize=20000)
+def _regions_cached(text: str) -> tuple:
+    return tuple(_regions(text))
+
+
 def regions_in(text: str) -> list[tuple[str, str | None]]:
     """[(region_key, side)] mentioned in text. Side only when stated next to it; never guessed."""
+    return list(_regions_cached(text or ""))
+
+
+def _regions(text: str) -> list[tuple[str, str | None]]:
     out = []
     t = text or ""
     for key, _, rx in REGIONS:

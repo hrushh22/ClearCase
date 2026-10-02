@@ -43,3 +43,11 @@ documents. The UI says so. All pages stay viewable and highlightable, and a re-s
 
 ## Cost per case
 Free tiers: $0. Token counts per call are logged; `GET /api/usage` shows totals and an estimate at paid list prices. Re-opening the dashboard costs nothing (cached digest), and a re-sync only re-extracts sources whose content hash changed.
+
+## Case X-Ray (attorney-only)
+- **Deterministic vs AI.** Contradiction rules, gaps, evidence-coverage states, the injury map, the graph, Spotlight ranking, lifecycle and Time Travel are plain code. AI is used only for (a) one cached pass pairing semantically conflicting facts, and (b) Stress Test's three roles. Every AI item must cite real verified fact ids or it is dropped. AI-paired contradictions are always labeled "Needs review".
+- **Verification.** An issue is hidden if any fact it cites is not a visible, verifier-passed fact, or if its source record no longer exists. Thin or inferred findings (dates before the incident, chronology gaps, AI pairs) show as "Needs review".
+- **Live Sapini result.** The rules find the inconsistencies the file itself records (three accounts of the mechanism; denial of prior injuries contradicted by the client's paperwork). The AI pairing pass found no additional pair, so none is shown; nothing is invented to fill the slot.
+- **Drafts are templates** filled from the file (provider, client, open item, cited evidence). They are never sent.
+- **Time Travel** uses each fact's "known at" date (its source's date). Open requests waiting on others are left out of historical views, because Clio task creation dates are not available.
+- **Graph layout** is a column layout (evidence → facts → propositions/issues → people) rather than force-directed, so it stays legible and stable across rebuilds.
