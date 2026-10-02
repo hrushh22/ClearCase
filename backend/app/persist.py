@@ -16,7 +16,7 @@ import time
 import traceback
 from pathlib import Path
 
-from .config import database_path, env
+from .config import OCR_CACHE_DIR, database_path, env
 
 FILENAME = "clearcase.db"
 _last_hash: str | None = None
@@ -28,20 +28,46 @@ def enabled() -> bool:
 
 
 def restore() -> str:
+    """Database + OCR cache from the private dataset. With the OCR cache present the server never has to run
+    OCR for documents it has seen before (OCR is the most memory-hungry step on small hosts)."""
     if not enabled():
         return "off"
     path = database_path()
-    if path.exists():
-        return "local database present"
+    out = []
     try:
-        from huggingface_hub import hf_hub_download
+        from huggingface_hub import hf_hub_download, snapshot_download
 
-        src = hf_hub_download(env("PERSIST_DATASET"), FILENAME, repo_type="dataset", token=env("HF_TOKEN"))
-        path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(src, path)
-        return "restored"
+        if not path.exists():
+            src = hf_hub_download(env("PERSIST_DATASET"), FILENAME, repo_type="dataset", token=env("HF_TOKEN"))
+            path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(src, path)  # contents only: the download cache is read-only
+            out.append("database restored")
+        snap = snapshot_download(env("PERSIST_DATASET"), repo_type="dataset", token=env("HF_TOKEN"), allow_patterns=["ocr/*.json"])
+        n = 0
+        for f in (Path(snap) / "ocr").glob("*.json"):
+            dst = OCR_CACHE_DIR / f.name
+            if not dst.exists():
+                shutil.copyfile(f, dst)
+                n += 1
+        out.append(f"{n} OCR files restored")
     except Exception as e:  # first boot: nothing saved yet
-        return f"nothing to restore ({type(e).__name__})"
+        out.append(f"nothing more to restore ({type(e).__name__})")
+    return "; ".join(out)
+
+
+def backup_ocr() -> str:
+    """Upload OCR results the dataset does not have yet."""
+    if not enabled():
+        return "off"
+    from huggingface_hub import HfApi
+
+    api = HfApi(token=env("HF_TOKEN"))
+    have = {f for f in api.list_repo_files(env("PERSIST_DATASET"), repo_type="dataset") if f.startswith("ocr/")}
+    new = [f for f in OCR_CACHE_DIR.glob("*.json") if f"ocr/{f.name}" not in have]
+    if new:
+        api.upload_folder(folder_path=str(OCR_CACHE_DIR), path_in_repo="ocr", repo_id=env("PERSIST_DATASET"), repo_type="dataset",
+                          allow_patterns=[f.name for f in new], commit_message="ClearCase OCR cache")
+    return f"{len(new)} OCR files uploaded"
 
 
 def backup(force: bool = False) -> str:
@@ -64,7 +90,11 @@ def backup(force: bool = False) -> str:
         api.upload_file(path_or_fileobj=str(tmp), path_in_repo=FILENAME, repo_id=env("PERSIST_DATASET"), repo_type="dataset",
                         commit_message="ClearCase state backup")
         _last_hash = h
-        return "uploaded"
+    try:
+        backup_ocr()
+    except Exception:
+        traceback.print_exc()
+    return "uploaded"
 
 
 def start_background(interval: int = 120) -> None:

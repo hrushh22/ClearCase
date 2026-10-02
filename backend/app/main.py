@@ -143,14 +143,19 @@ def document_file(doc_id: str):
     if not doc:
         raise HTTPException(404, "Document not found")
     if not Path(doc["local_path"]).exists() and clio_source() == "live" and str(doc["clio_id"]).isdigit():
-        # hosted after a restart: the cached PDF is gone, so read it from Clio again (GET only)
+        # hosted after a restart (or a database built on another machine): read the PDF from Clio again (GET only)
         from .clio_client import ClioReadClient
-        client = ClioReadClient(clio_auth.access_token(), on_unauthorized=clio_auth.refresh)
-        try:
-            Path(doc["local_path"]).parent.mkdir(parents=True, exist_ok=True)
-            Path(doc["local_path"]).write_bytes(client.download(doc["clio_id"]))
-        finally:
-            client.close()
+        from .config import DOC_CACHE_DIR
+        local = DOC_CACHE_DIR / f"{doc['clio_id']}_{''.join(ch if ch.isalnum() or ch in '._-' else '_' for ch in doc['name'])}"
+        if not local.exists():
+            client = ClioReadClient(clio_auth.access_token(), on_unauthorized=clio_auth.refresh)
+            try:
+                local.write_bytes(client.download(doc["clio_id"]))
+            finally:
+                client.close()
+        with db.tx() as c:
+            c.execute("UPDATE documents SET local_path=? WHERE id=?", (str(local), doc_id))
+        doc = {**doc, "local_path": str(local)}
     if not Path(doc["local_path"]).exists():
         raise HTTPException(404, "Document not found")
     return FileResponse(doc["local_path"], media_type="application/pdf", filename=doc["name"],
