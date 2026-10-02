@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+html, body { background: #f6f7f9; color: #0f172a; }
+.card { @apply bg-white rounded-xl border border-slate-200 shadow-sm; }
+.card-h { @apply text-xs font-semibold uppercase tracking-wide text-slate-500; }
+.chip { @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium; }
+.btn { @apply inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition; }
+.btn-primary { @apply inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50; }
+.btn-ghost { @apply inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition text-slate-700 hover:bg-slate-100 disabled:opacity-40; }
+mark.quote { background: #fde68a; padding: 0 2px; border-radius: 2px; }

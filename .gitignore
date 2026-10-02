@@ -1,0 +1,29 @@
+# secrets
+.env
+secrets/
+*.pem
+*.key
+
+# databases and caches
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+backend/data/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# node / build
+node_modules/
+frontend/dist/
+dist/
+build/
+
+# never commit the case materials
+Sapini Case Materials/
+*.pdf
