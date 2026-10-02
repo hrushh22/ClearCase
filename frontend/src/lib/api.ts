@@ -23,14 +23,43 @@ export type Fact = Src & {
 // The digest is a large generated document; typed loosely on purpose.
 export type Digest = any;
 
+// Where the backend lives. Empty = same origin (local: the backend serves this app).
+// On GitHub Pages it is set at build time: VITE_API_BASE=https://<space>.hf.space
+export const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "");
+
+const TOKEN_KEY = "clearcase.session";
+export const session = {
+  get: (): string | null => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } },
+  set: (t: string | null) => { try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch { /* private mode */ } },
+};
+
+/** A backend URL with the session token attached, for links opened in a new tab or fetched by pdf.js. */
+export const authedUrl = (path: string) => {
+  const t = session.get();
+  const [p, hash] = path.split("#");
+  return `${API_BASE}${p}${t ? `${p.includes("?") ? "&" : "?"}t=${encodeURIComponent(t)}` : ""}${hash ? `#${hash}` : ""}`;
+};
+
+/** Absolute link to a page of this app (hash routes work on GitHub Pages without server rewrites). */
+export const appUrl = (route: string) => `${window.location.origin}${window.location.pathname}#${route}`;
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const r = await fetch(path, { headers: { "Content-Type": "application/json" }, ...init });
+  const t = session.get();
+  const r = await fetch(`${API_BASE}${path}`, {
+    ...init, headers: { "Content-Type": "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}), ...(init?.headers || {}) },
+  });
   const body = await r.json().catch(() => ({}));
+  if (r.status === 401 && !path.startsWith("/api/provider/") && !path.startsWith("/api/login")) {
+    session.set(null);
+    window.dispatchEvent(new Event("clearcase:auth"));  // App shows the password screen
+  }
   if (!r.ok) throw new Error(body.detail || body.error || `${r.status}`);
   return body as T;
 }
 
 export const api = {
+  health: () => req<any>("/api/health"),
+  login: (password: string) => req<any>("/api/login", { method: "POST", body: JSON.stringify({ password }) }),
   status: () => req<any>("/api/status"),
   sync: (force = false) => req<any>(`/api/sync?force=${force}`, { method: "POST" }),
   digest: () => req<Digest>("/api/digest?user=attorney"),

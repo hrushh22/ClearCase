@@ -1,0 +1,9 @@
+.env
+secrets
+*.db
+*.db-*
+backend/data
+**/__pycache__
+**/node_modules
+frontend/dist
+.git

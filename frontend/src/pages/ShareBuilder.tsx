@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import ProviderView, { type ProviderClaim } from "../components/ProviderView";
 import { Cite } from "../components/SourceViewer";
-import { api, fmtDateTime } from "../lib/api";
+import { api, appUrl, fmtDateTime } from "../lib/api";
 
 const CAT_LABEL: Record<string, string> = {
   status: "Status", treatment: "Treatment", bills: "Bills", needs: "Firm needs", coverage: "Coverage",
@@ -36,7 +36,7 @@ export default function ShareBuilder({ d }: { d: any }) {
 
   const send = async () => {
     const r = await api.createLink({ provider_id: pid, approved_ids: Object.keys(on).filter((k) => on[k]), days });
-    setCreated({ ...r, url: `${window.location.origin}/p/${r.token}` });
+    setCreated({ ...r, url: appUrl(`/p/${r.token}`) });
     refreshLinks();
   };
 
@@ -126,7 +126,7 @@ export default function ShareBuilder({ d }: { d: any }) {
                   {l.updates?.length > 0 && <div className="text-[11px] text-slate-500" title={l.updates.map((u: any) => u.summary).join(" | ")}>
                     {l.updates.length} update{l.updates.length === 1 ? "" : "s"} pushed · last {fmtDateTime(l.updates[0].created_at)}</div>}</td>
                 <td className="text-right">
-                  <a className="btn-ghost" href={`/p/${l.token}`} target="_blank">Open</a>
+                  <a className="btn-ghost" href={appUrl(`/p/${l.token}`)} target="_blank">Open</a>
                   {!l.revoked ? <button className="btn-ghost text-rose-600" onClick={() => api.revoke(l.token).then(refreshLinks)}>Revoke</button> : <span className="text-xs">revoked</span>}
                 </td>
               </tr>

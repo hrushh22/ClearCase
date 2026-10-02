@@ -194,6 +194,11 @@ def run_pipeline(force: bool = False) -> dict:
         except Exception:
             traceback.print_exc()
         _progress("Digest ready")
+        try:
+            from . import persist
+            persist.backup()
+        except Exception:
+            traceback.print_exc()
         return {"status": "built", "content_hash": h, "extraction": stats, "verifier": vstats}
     except Exception as e:  # surfaced in the UI
         _status["error"] = f"{type(e).__name__}: {e}"

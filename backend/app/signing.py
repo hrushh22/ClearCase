@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
-from .config import signing_key_path
+from .config import env, signing_key_path
 
 _key: Ed25519PrivateKey | None = None
 
@@ -26,6 +26,11 @@ def canonical(obj: dict) -> str:
 def private_key() -> Ed25519PrivateKey:
     global _key
     if _key:
+        return _key
+    pem = env("FIRM_SIGNING_KEY_PEM")  # hosted: the key lives in a secret so it survives restarts
+    if pem:
+        # secrets often arrive with literal "\n" sequences instead of line breaks
+        _key = serialization.load_pem_private_key(pem.replace("\\n", "\n").encode(), password=None)
         return _key
     path = signing_key_path()
     if path.exists():

@@ -28,7 +28,8 @@ export default function CaseXRay({ d }: { d: any }) {
   const [asOf, setAsOf] = useState<string | null>(null);
   // deep link: /xray?focus=<proposition id | issue_<id>> opens that evidence view directly
   const [focus, setFocus] = useState<string[] | null>(() => {
-    const f = new URLSearchParams(window.location.search).get("focus");
+    const q = window.location.hash.split("?")[1] || window.location.search.slice(1);  // hash routes carry their own query
+    const f = new URLSearchParams(q).get("focus");
     return f ? [f] : null;
   });
   const [spotlight, setSpotlight] = useState(false);

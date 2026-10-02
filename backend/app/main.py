@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from . import clio_auth, db, digest, sharing
 from .agents import code_agents
 from .agents.share_policy import mentions, propose, provider_contacts
-from .config import ROOT, ConfigError, clio_source, firm_name
+from .config import ROOT, ConfigError, clio_source, env, firm_name
 from .documents import find_page_for_quote
 from .llm import available_providers, usage_report
 from .signing import public_key_b64
@@ -22,10 +22,41 @@ from .scenario import ordered_liens as _ordered_liens, provider_waterfall
 from .waterfall import DEFAULT_FEE_PCT, Lien, WaterfallInput, breakeven_gross, compute
 
 app = FastAPI(title="ClearCase", version="1.0")
+from . import auth  # noqa: E402  (attorney password gate; off when APP_PASSWORD is empty)
+
+app.middleware("http")(auth.middleware)
 from .xray.routes import router as xray_router  # noqa: E402  (attorney-only Case X-Ray)
 
 app.include_router(xray_router)
+# CORS is added after the auth middleware so it wraps it: a 401 still carries CORS headers for the Pages frontend
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+
+class LoginIn(BaseModel):
+    password: str
+
+
+@app.post("/api/login")
+def login(inp: LoginIn):
+    if not auth.enabled():
+        return {"token": None, "gate": False}
+    if not auth.check_password(inp.password):
+        raise HTTPException(401, "Wrong password")
+    return {"token": auth.issue(), "gate": True}
+
+
+@app.on_event("startup")
+def _startup():
+    from . import persist
+    print("persist:", persist.restore())
+    persist.start_background()
+    if env("AUTO_SYNC_ON_START") == "1" and not digest.load_digest():
+        digest.run_in_background()  # first boot in the cloud: build the digest from Clio
+
+
+@app.get("/api/health")
+def health():
+    return {"ok": True, "gate": auth.enabled()}
 
 
 @app.exception_handler(ConfigError)
@@ -108,8 +139,19 @@ def get_source(source_type: str, source_id: str):
 
 @app.get("/api/documents/{doc_id}/file")
 def document_file(doc_id: str):
-    doc = db.one("SELECT name, local_path FROM documents WHERE id=?", (doc_id,))
-    if not doc or not Path(doc["local_path"]).exists():
+    doc = db.one("SELECT name, local_path, clio_id FROM documents WHERE id=?", (doc_id,))
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    if not Path(doc["local_path"]).exists() and clio_source() == "live" and str(doc["clio_id"]).isdigit():
+        # hosted after a restart: the cached PDF is gone, so read it from Clio again (GET only)
+        from .clio_client import ClioReadClient
+        client = ClioReadClient(clio_auth.access_token(), on_unauthorized=clio_auth.refresh)
+        try:
+            Path(doc["local_path"]).parent.mkdir(parents=True, exist_ok=True)
+            Path(doc["local_path"]).write_bytes(client.download(doc["clio_id"]))
+        finally:
+            client.close()
+    if not Path(doc["local_path"]).exists():
         raise HTTPException(404, "Document not found")
     return FileResponse(doc["local_path"], media_type="application/pdf", filename=doc["name"],
                         headers={"Content-Disposition": f'inline; filename="{doc["name"]}"'})
@@ -191,6 +233,7 @@ def waterfall(inp: WaterfallIn):
 @app.post("/api/waterfall/reset")
 def waterfall_reset():
     db.set_setting("waterfall", {})
+    sharing.refresh_links(_digest_or_404())  # providers' place in line follows the reset too
     return waterfall_settings()
 
 

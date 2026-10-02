@@ -5,7 +5,45 @@ import ShareBuilder from "./pages/ShareBuilder";
 import CaseXRay from "./pages/CaseXRay";
 import ProviderPortal from "./pages/ProviderPortal";
 import { SourceProvider } from "./components/SourceViewer";
-import { api, fmtDateTime } from "./lib/api";
+import { api, authedUrl, fmtDateTime, session } from "./lib/api";
+
+function Login({ onDone }: { onDone: () => void }) {
+  const [pw, setPw] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const submit = (e: any) => {
+    e.preventDefault(); setBusy(true); setErr(null);
+    api.login(pw).then((r) => { session.set(r.token); onDone(); }).catch(() => setErr("Wrong password")).finally(() => setBusy(false));
+  };
+  return (
+    <div className="flex min-h-screen items-center justify-center p-4">
+      <form onSubmit={submit} className="card w-full max-w-sm space-y-3 p-6">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 font-bold text-white">C</div>
+          <div className="font-semibold">ClearCase</div>
+        </div>
+        <div className="text-sm text-slate-600">Attorney workspace. Enter the team password. (Provider links don't need it.)</div>
+        <input type="password" autoFocus value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Password"
+          className="w-full rounded-lg border px-3 py-2" />
+        {err && <div className="text-sm text-rose-700">{err}</div>}
+        <button className="btn-primary w-full justify-center" disabled={busy || !pw}>{busy ? "Checking…" : "Open ClearCase"}</button>
+      </form>
+    </div>
+  );
+}
+
+function Gate() {
+  const [state, setState] = useState<"checking" | "login" | "ok">("checking");
+  useEffect(() => {
+    const onAuth = () => setState("login");
+    window.addEventListener("clearcase:auth", onAuth);
+    api.health().then((h) => setState(h.gate && !session.get() ? "login" : "ok")).catch(() => setState("ok"));
+    return () => window.removeEventListener("clearcase:auth", onAuth);
+  }, []);
+  if (state === "checking") return <div className="p-8 text-center text-slate-500">Connecting to ClearCase…</div>;
+  if (state === "login") return <Login onDone={() => setState("ok")} />;
+  return <Attorney />;
+}
 
 function Attorney() {
   const [d, setD] = useState<any>(null);
@@ -94,7 +132,7 @@ function Attorney() {
               <button className="btn-primary mt-4" onClick={() => sync(false)} disabled={running}>Sync from Clio</button>
               {status?.clio && !status.clio.connected && status.clio.source === "live" && (
                 <div className="mt-3 text-sm text-slate-600">
-                  Clio is not connected. {status.clio.oauth_configured ? <a className="text-indigo-600 underline" href="/auth/clio/login">Connect Clio (read-only)</a>
+                  Clio is not connected. {status.clio.oauth_configured ? <a className="text-indigo-600 underline" href={authedUrl("/auth/clio/login")}>Connect Clio (read-only)</a>
                     : "Fill CLIO_CLIENT_ID and CLIO_CLIENT_SECRET (or CLIO_ACCESS_TOKEN) in .env."}
                 </div>
               )}
@@ -117,7 +155,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/p/:token" element={<ProviderPortal />} />
-      <Route path="/*" element={<Attorney />} />
+      <Route path="/*" element={<Gate />} />
     </Routes>
   );
 }

@@ -94,6 +94,30 @@ Scripts: `python scripts/sync.py [--force]` (sync and build from the CLI), `pyth
 
 Tests: `cd backend && python -m pytest -q`. They cover the read-only guard, waterfall math, the verifier (including OCR spacing noise) and signing.
 
+## Host it (GitHub Pages + Hugging Face Space)
+
+GitHub Pages serves only static files, so the frontend goes on Pages and the Python backend runs on a free
+Hugging Face Space (Docker). The Space URL alone also works: it serves the full app.
+
+1. **Backend:** `HF_TOKEN=hf_xxx APP_PASSWORD=<team password> python scripts/deploy_space.py`. This creates
+   `<you>/clearcase` (public Space; code only, never `.env`, keys, the database or PDFs), sets the secrets from your
+   `.env` plus `APP_PASSWORD`, your firm signing key and `HF_TOKEN`, and a **private** dataset `<you>/clearcase-state`
+   that keeps the database across restarts. The first boot syncs from Clio by itself (about 15 minutes on Groq's free tier).
+2. **Frontend:** push this repo to GitHub, then in the repo: Settings → Pages → Source: **GitHub Actions**, and
+   Settings → Secrets and variables → Actions → Variables → `CLEARCASE_API_BASE` = the Space URL printed by step 1.
+   The workflow `.github/workflows/pages.yml` publishes `frontend/` on every push to `main`.
+3. Open `https://<github-user>.github.io/<repo>/`, enter the team password. Provider links look like
+   `https://<github-user>.github.io/<repo>/#/p/<token>` and need no password.
+
+**Security when hosted:** with `APP_PASSWORD` set, every attorney route requires a signed session token
+(`POST /api/login`); provider links, the firm public key and the Clio OAuth callback stay public. Leave
+`APP_PASSWORD` empty only for local use.
+
+**Live provider links:** after every sync (and when the attorney saves or resets the settlement scenario) every live
+link is refreshed: changed items are re-signed, items that no longer apply are withdrawn, and new items flow in
+for categories the attorney already shared (status, what the firm needs, visits, the office's own bill). The provider
+page checks for updates every 30 seconds and shows each change in its "Case movement" feed.
+
 ## Honest limits
 
 - **This is signed selective disclosure, not zero-knowledge.** A provider can verify that each shared claim came from the firm unaltered (Ed25519) and was cut from a specific source (`source_hash`, so the firm can later reveal the source and anyone can check it). That gives the practical benefit of ZK sharing: verify a claim without seeing the file. It is not a ZK-SNARK. Range proofs (for example "coverage ≥ your bill") and Merkle inclusion proofs are on the roadmap.

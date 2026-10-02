@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import * as pdfjs from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import { api, fmtDate, SOURCE_LABEL, type Src } from "../lib/api";
+import { api, authedUrl, fmtDate, SOURCE_LABEL, type Src } from "../lib/api";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -116,7 +116,7 @@ function PdfView({ doc, src }: { doc: any; src: Src }) {
 
   useEffect(() => {
     let cancelled = false;
-    pdfjs.getDocument({ url: `/api/documents/${doc.id}/file` }).promise.then((p) => !cancelled && setPdf(p));
+    pdfjs.getDocument({ url: authedUrl(`/api/documents/${doc.id}/file`) }).promise.then((p) => !cancelled && setPdf(p));
     return () => { cancelled = true; };
   }, [doc.id]);
 
@@ -151,7 +151,7 @@ function PdfView({ doc, src }: { doc: any; src: Src }) {
           <button className="btn-ghost" disabled={page >= doc.page_count} onClick={() => setPage(page + 1)}>›</button>
           <button className="btn-ghost" onClick={() => setScale(Math.max(0.6, scale - 0.2))}>−</button>
           <button className="btn-ghost" onClick={() => setScale(Math.min(2.4, scale + 0.2))}>+</button>
-          <a className="btn-ghost" href={`/api/documents/${doc.id}/file#page=${page}`} target="_blank">Open PDF</a>
+          <a className="btn-ghost" href={authedUrl(`/api/documents/${doc.id}/file#page=${page}`)} target="_blank">Open PDF</a>
         </div>
       </div>
       {loc && (
