@@ -31,7 +31,7 @@ def provider_contacts(bundle: dict) -> list[dict]:
         works_for_provider = c.get("type") == "Person" and c.get("company") in company_names
         if re.search(r"provider|hospital|treating|physician|clinic|therap|chiropract", rel, re.I) and not works_for_provider:
             people = [p["name"] for p in contacts if p.get("company") and p.get("company") == c.get("name") and p["id"] != c["id"]]
-            out.append({"id": c["id"], "name": c["name"], "relationship": rel, "email": c.get("email"), "people": people,
+            out.append({"id": c["id"], "name": c["name"], "type": c.get("type"), "relationship": rel, "email": c.get("email"), "people": people,
                         "tokens": [c["name"].split()[-1].lower()] if c.get("type") == "Person" else provider_tokens(c["name"], people)})
     return out
 

@@ -183,6 +183,12 @@ def run_pipeline(force: bool = False) -> dict:
         d["pipeline_stats"] = {"extraction": stats, "verifier": vstats}
         save_digest(d)
         emit_changes(prev, d)
+        _progress("Building Case X-Ray")
+        try:  # X-Ray is additive: a failure here never blocks the digest
+            from .xray import service as xray_service
+            xray_service.build(d)
+        except Exception:
+            traceback.print_exc()
         _progress("Digest ready")
         return {"status": "built", "content_hash": h, "extraction": stats, "verifier": vstats}
     except Exception as e:  # surfaced in the UI

@@ -21,6 +21,9 @@ from .signing import public_key_b64
 from .waterfall import DEFAULT_FEE_PCT, Lien, WaterfallInput, breakeven_gross, compute
 
 app = FastAPI(title="ClearCase", version="1.0")
+from .xray.routes import router as xray_router  # noqa: E402  (attorney-only Case X-Ray)
+
+app.include_router(xray_router)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
