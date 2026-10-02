@@ -25,4 +25,5 @@ ENV CLIO_SOURCE=live \
     PYTHONUNBUFFERED=1
 WORKDIR /app/backend
 EXPOSE 7860
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+# Render and most hosts pass the port in $PORT; Hugging Face uses 7860
+CMD ["sh", "-c", "python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-7860}"]

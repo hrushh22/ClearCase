@@ -1,0 +1,35 @@
+# Render Blueprint: the ClearCase backend (+ app) as a free Docker web service.
+# Secrets marked sync:false are entered once in the Render dashboard (never committed).
+services:
+  - type: web
+    name: clearcase
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: APP_PASSWORD
+        sync: false
+      - key: CLIO_CLIENT_ID
+        sync: false
+      - key: CLIO_CLIENT_SECRET
+        sync: false
+      - key: CLIO_ACCESS_TOKEN
+        sync: false
+      - key: CLIO_REFRESH_TOKEN
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: MISTRAL_API_KEY
+        sync: false
+      - key: FIRM_NAME
+        sync: false
+      - key: FIRM_SIGNING_KEY_PEM
+        sync: false
+      - key: HF_TOKEN
+        sync: false
+      - key: PERSIST_DATASET
+        sync: false
+      - key: CLIO_REGION_BASE_URL
+        value: https://app.clio.com
