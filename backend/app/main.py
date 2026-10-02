@@ -63,12 +63,12 @@ def get_digest(user: str = "attorney"):
     if view:
         if view["last_viewed_digest_hash"] != d["content_hash"]:
             compare_hash, since = view["last_viewed_digest_hash"], view["last_viewed_at"]
-        else:
+        else:  # this digest was already seen (e.g. a refresh): compare with the visit before
             compare_hash, since = view["previous_digest_hash"], view["previous_viewed_at"]
     prev = digest.load_digest(compare_hash) if compare_hash and compare_hash != d["content_hash"] else None
     changes = code_agents.detect_changes(prev, d) if prev else {"first_view": not view, "items": []}
-    changes["since"] = since or (view or {}).get("last_viewed_at")
-    changes["last_viewed_at"] = (view or {}).get("last_viewed_at")
+    changes["since"] = since
+    changes["last_viewed_at"] = since
     d["changes"] = changes
     return d
 
@@ -79,11 +79,10 @@ def mark_seen(user: str = "attorney"):
     view = db.one("SELECT * FROM views WHERE user_id=?", (user,))
     now = db.now_iso()
     with db.tx() as c:
-        if view and view["last_viewed_digest_hash"] != d["content_hash"]:
+        if view:
+            # the visit being replaced becomes "previous", so a refresh still diffs against the real last visit
             c.execute("UPDATE views SET previous_digest_hash=last_viewed_digest_hash, previous_viewed_at=last_viewed_at, "
                       "last_viewed_digest_hash=?, last_viewed_at=? WHERE user_id=?", (d["content_hash"], now, user))
-        elif view:
-            c.execute("UPDATE views SET last_viewed_at=? WHERE user_id=?", (now, user))
         else:
             c.execute("INSERT INTO views(user_id,last_viewed_digest_hash,last_viewed_at) VALUES(?,?,?)", (user, d["content_hash"], now))
     return {"ok": True, "at": now}

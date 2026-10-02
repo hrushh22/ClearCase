@@ -90,7 +90,9 @@ def build_candidates(digest: dict, provider: dict) -> list[dict]:
             src = {"source_type": w["source_type"], "source_id": w["source_id"], "page": None, "quote": w["title"]}
             cands.append(_claim(f"need_{i}", f"The firm needs from your office: {w.get('detail') or w['title']}", "needs", src))
     for i, u in enumerate(digest["attention"].get("upcoming", [])):
-        if u["kind"] == "calendar" and mentions(u["title"], toks):
+        is_visit = re.search(r"treatment|appointment|visit|surgery|arthroscopy|therapy|consult|follow-up", u["title"], re.I) \
+            and not re.search(r"\bcall\b|file review|client appointment", u["title"], re.I)
+        if u["kind"] == "calendar" and is_visit and mentions(u["title"], toks):
             src = {"source_type": u["source_type"], "source_id": u["source_id"], "page": None, "quote": u["title"]}
             cands.append(_claim(f"visit_{i}", f"Patient's next scheduled visit: {u['due']} ({u['title']}).", "treatment", src))
     # supported facts that mention this provider, plus a few strategy facts the agent should hold back

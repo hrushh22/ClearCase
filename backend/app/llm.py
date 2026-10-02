@@ -39,6 +39,7 @@ KEYS = {"gemini": "GEMINI_API_KEY", "mistral": "MISTRAL_API_KEY", "groq": "GROQ_
 PAID_PRICE = {"gemini": (0.30, 2.50), "mistral": (0.10, 0.30), "groq": (0.15, 0.75)}
 MIN_INTERVAL = {"gemini": 6.5, "mistral": 1.1, "groq": 2.1}
 TPM = {"gemini": 200_000, "mistral": 400_000, "groq": 7_500}
+MAX_QUEUE_WAIT = 20.0  # seconds; beyond this a call spills to the next provider
 
 
 class LLMUnavailable(RuntimeError):
@@ -51,6 +52,16 @@ class _Limiter:
         self.last = 0.0
         self.window: deque[tuple[float, int]] = deque()
         self.lock = threading.Lock()
+
+    def eta(self, est_tokens: int) -> float:
+        """Rough seconds until a call of this size could start."""
+        now = time.time()
+        recent = [(t, n) for t, n in self.window if now - t <= 60]
+        used = sum(n for _, n in recent)
+        gap = max(0.0, MIN_INTERVAL[self.provider] - (now - self.last))
+        if recent and used + est_tokens > TPM[self.provider]:
+            gap = max(gap, 60 - (now - recent[0][0]))
+        return gap
 
     def wait(self, est_tokens: int) -> None:
         with self.lock:
@@ -167,6 +178,10 @@ def complete_json(task: str, prompt: str, schema: type[T], images: list[bytes] |
         raise LLMUnavailable(f"No LLM key configured for task '{task}'. Fill GEMINI_API_KEY / MISTRAL_API_KEY / GROQ_API_KEY in .env.")
 
     errors = []
+    est = len(full) // 3 + 1500
+    # spill over: if the routed provider's free-tier budget would stall us, use the next provider now
+    if len(order) > 1 and _limiters[order[0]].eta(est) > MAX_QUEUE_WAIT:
+        order = order[1:] + order[:1]
     for provider in order:
         attempt_prompt = full
         for attempt in range(4):

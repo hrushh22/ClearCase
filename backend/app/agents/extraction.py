@@ -12,12 +12,15 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
 from .. import db
 from ..llm import LLMUnavailable, available_providers, complete_json
+
+WORKERS = 5
 
 FactType = Literal["injury", "treatment", "provider", "bill", "lien", "payment", "coverage", "demand", "offer",
                    "deadline", "filing", "contact", "client_event", "expense", "valuation", "risk", "other"]
@@ -323,17 +326,21 @@ def run_extraction(progress=None) -> dict[str, int]:
     stats["skipped"] += len([s for s in sources if s["source_type"] in ("note", "communication")]) - len(todo)
     if use_llm:
         batches = _chunks_for_records(todo)
-        for i, batch in enumerate(batches):
-            if progress:
-                progress(f"Extracting facts from notes and emails ({i + 1}/{len(batches)})")
+        done = [0]
+
+        def one(batch):
             try:
-                facts = llm_extract_records(batch, client)
+                facts, mode_used = llm_extract_records(batch, client), "llm"
             except LLMUnavailable:
                 facts, mode_used = heuristic_facts(batch), "heuristic"
-            else:
-                mode_used = "llm"
             _save(facts, mode_used, [(s["source_type"], s["source_id"], "all", s["sha256"]) for s in batch])
-            stats["records"] += len(batch)
+            done[0] += 1
+            if progress:
+                progress(f"Extracting facts from notes and emails ({done[0]}/{len(batches)})")
+
+        with ThreadPoolExecutor(max_workers=WORKERS) as pool:
+            list(pool.map(one, batches))
+        stats["records"] += len(todo)
     elif todo:
         _save(heuristic_facts(todo), "heuristic", [(s["source_type"], s["source_id"], "all", s["sha256"]) for s in todo])
         stats["records"] += len(todo)
@@ -348,15 +355,23 @@ def run_extraction(progress=None) -> dict[str, int]:
         used = mode
         if use_llm:
             chunks = _doc_page_chunks(doc, pages)
-            for i, chunk in enumerate(chunks):
-                if progress:
-                    progress(f"Reading {doc['name']} (part {i + 1}/{len(chunks)})")
+            done = [0]
+
+            def one(chunk):
                 try:
-                    facts += llm_extract_pages(doc, chunk, client)
+                    out = (llm_extract_pages(doc, chunk, client), "llm")
                 except LLMUnavailable:
-                    facts += heuristic_doc_facts(doc, chunk)
-                    used = "heuristic"
-                stats["doc_chunks"] += 1
+                    out = (heuristic_doc_facts(doc, chunk), "heuristic")
+                done[0] += 1
+                if progress:
+                    progress(f"Reading {doc['name']} ({done[0]}/{len(chunks)} parts)")
+                return out
+
+            with ThreadPoolExecutor(max_workers=WORKERS) as pool:  # rate limiters in llm.py pace the calls
+                for chunk_facts, how in pool.map(one, chunks):
+                    facts += chunk_facts
+                    used = "heuristic" if how == "heuristic" else used
+            stats["doc_chunks"] += len(chunks)
         else:
             facts = heuristic_doc_facts(doc, pages)
         with db.tx() as c:

@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from typing import Literal
 
 from pydantic import BaseModel
@@ -114,23 +115,29 @@ def run_verifier(progress=None) -> dict[str, int]:
 
     # LLM semantic check, batched
     if to_llm and available_providers():
-        batch_size = 25
-        for b in range(0, len(to_llm), batch_size):
-            batch = to_llm[b:b + batch_size]
-            if progress:
-                progress(f"Checking that each quote supports its claim ({b}/{len(to_llm)})")
+        batch_size = 30
+        batches = [to_llm[b:b + batch_size] for b in range(0, len(to_llm), batch_size)]
+        done = [0]
+
+        def one(batch):
             items = "\n".join(f'- id: {f["fact_id"]}\n  CLAIM: {f["text"]}' + (f' (amount {f["amount"]})' if f["amount"] else "")
                               + (f' (date {f["date"]})' if f["date"] else "") + f'\n  QUOTE: "{f["quote"]}"' for f in batch)
             try:
                 verdicts = {v.id: v for v in complete_json("verifier", VERIFY_PROMPT.format(items=items), Verdicts).results}
             except LLMUnavailable:
-                break
+                return  # stays "quote_ok": shown with a caution, never shared or signed
             with db.tx() as c:
                 for f in batch:
                     v = verdicts.get(f["fact_id"])
                     if v:
                         c.execute("UPDATE facts SET verify_status=?, verify_reason=? WHERE fact_id=?",
                                   (v.verdict, v.reason, f["fact_id"]))
+            done[0] += 1
+            if progress:
+                progress(f"Checking that each quote supports its claim ({done[0]}/{len(batches)} batches)")
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            list(pool.map(one, batches))
     for r in db.query("SELECT verify_status s, COUNT(*) n FROM facts GROUP BY verify_status"):
         if r["s"] in stats:
             stats[r["s"]] = r["n"]

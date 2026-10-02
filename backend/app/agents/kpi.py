@@ -126,7 +126,7 @@ def _coverage_code(cov: list[dict]) -> dict:
     limit_facts = [f for f in cov if re.search(r"per person|liability|bodily injury|\$[0-9,]+\s*/\s*\$", f["quote"], re.I)
                    and _amounts(f["quote"]) and not re.search(r"UM/UIM|uninsured|underinsured|no-fault|basic economic", f["quote"], re.I)]
     limit_facts.sort(key=lambda f: (not re.search(r"defendant|bodily injury|liability", f["quote"], re.I), f["source_type"] == "custom_field"))
-    confirmed = any(re.search(r"confirm", f["quote"] + f["text"], re.I) for f in limit_facts)
+    confirmed = any(re.search(r"confirmed(:\s*yes|\s+in writing)", f["quote"] + " " + f["text"], re.I) for f in cov)
     cap = _amounts(limit_facts[0]["quote"])[0] if limit_facts else None
     if cap and self_ins:
         kind, headline = "mixed", f"${cap:,.0f} per person; adverse authority self-insured"

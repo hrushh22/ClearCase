@@ -9,7 +9,7 @@ export default function Injuries({ d }: { d: any }) {
       <div className="text-xs text-slate-500">
         from {d.documents.length} documents ({scanned} scanned pages read by OCR) plus notes · {inj.method === "llm" ? "AI summary, every line cited" : "diagnosis lines found by rules"}
       </div>
-      <div className="mt-3 space-y-3">
+      <div className="mt-3 max-h-[640px] space-y-3 overflow-auto pr-1">
         {inj.injuries.length === 0 && <div className="text-sm text-slate-500">No injury facts yet.</div>}
         {inj.injuries.map((i: any, k: number) => (
           <div key={k} className="rounded-lg border border-slate-100 p-3">
