@@ -55,12 +55,12 @@ export default function CaseXRay({ d }: { d: any }) {
   return (
     <div className="space-y-5">
       <section className="card fade-up overflow-hidden p-0">
-        <div className="grad-bg relative px-6 py-6 text-white">
+        <div className="grad-bg relative px-4 py-5 text-white sm:px-6 sm:py-6">
           <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-2xl" />
           <div className="relative flex flex-wrap items-end gap-6">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/85"><ScanSearch size={14} />Case X-Ray</div>
-              <div className="mt-1 text-3xl font-extrabold tracking-tight drop-shadow-sm">
+              <div className="mt-1 text-2xl font-extrabold tracking-tight drop-shadow-sm sm:text-3xl">
                 ClearCase found {x.total} item{x.total === 1 ? "" : "s"} worth reviewing
               </div>
               <div className="mt-1 text-sm text-white/90">
@@ -68,10 +68,10 @@ export default function CaseXRay({ d }: { d: any }) {
                 {" "}· evidence consistency and completeness, not a prediction
               </div>
             </div>
-            <div className="stagger grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            <div className="stagger grid w-full grid-cols-2 gap-2.5 sm:w-auto sm:grid-cols-4">
               {[[CircleSlash, "Contradictions", c.contradictions], [SearchX, "Evidence gaps", c.gaps], [Hourglass, "Waiting on others", c.dependencies],
                 [TriangleAlert, "Needs review", c.needs_review]].map(([Icon, l, n]: any) => (
-                <div key={l} className="min-w-[118px] rounded-2xl bg-white/95 px-4 py-2.5 text-slate-900 shadow-sm transition hover:-translate-y-0.5">
+                <div key={l} className="rounded-2xl sm:min-w-[118px] bg-white/95 px-4 py-2.5 text-slate-900 shadow-sm transition hover:-translate-y-0.5">
                   <div className="flex items-center justify-between"><span className="text-2xl font-extrabold">{n}</span><Icon size={17} className="text-rose-500" /></div>
                   <div className="text-[11px] font-medium text-slate-500">{l}</div>
                 </div>
@@ -79,7 +79,7 @@ export default function CaseXRay({ d }: { d: any }) {
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3 px-6 py-3 text-sm">
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm sm:px-6">
           {!asOf && imp.compared_to && (
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-semibold text-slate-700">New evidence impact:</span>
@@ -92,7 +92,7 @@ export default function CaseXRay({ d }: { d: any }) {
             </div>
           )}
           {!asOf && !imp.compared_to && <span className="text-slate-500">First X-Ray of this file: issue history starts now.</span>}
-          <div className="ml-auto flex min-w-[320px] flex-1 items-center gap-2 rounded-xl bg-rose-50/70 px-3 py-1.5">
+          <div className="flex w-full items-center gap-2 rounded-xl bg-rose-50/70 px-3 py-1.5 md:ml-auto md:w-auto md:min-w-[320px] md:flex-1">
             <History size={15} className="text-rose-500" aria-hidden />
             <span className="whitespace-nowrap text-xs font-semibold text-slate-600">Time travel</span>
             <input type="range" className="flex-1 accent-rose-500" min={toDay(start)} max={toDay(today)} value={toDay(asOf || today)}

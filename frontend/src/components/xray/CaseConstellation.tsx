@@ -267,7 +267,7 @@ function Inner({ x, focus, onFocusIssue }: { x: any; focus: string[] | null; onF
         <div className="p-2"><FullNetwork graph={x.graph} focus={focus} onFocusIssue={onFocusIssue} /></div>
       ) : (
         <>
-          <div className="h-[560px]">
+          <div className="h-[460px] sm:h-[560px] 2xl:h-[680px]">
             <ReactFlow nodes={built!.nodes} edges={built!.edges} nodeTypes={nodeTypes} onNodeClick={onNodeClick} fitView minZoom={0.2} maxZoom={1.6}
               nodesConnectable={false} proOptions={{ hideAttribution: true }}>
               <Background gap={28} color="#e2e8f0" />

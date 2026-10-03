@@ -11,7 +11,7 @@ export const STATE: Record<string, { glyph: string; cls: string; bar: string; ra
 /** Proposition support states from countable components only. No percentages, no outcome scores. */
 export default function EvidenceCoverage({ props, onFocus }: { props: any[]; onFocus: (ids: string[]) => void }) {
   return (
-    <div className="grid gap-2 md:grid-cols-2">
+    <div className="grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
       {props.map((p) => {
         const s = STATE[p.state];
         const c = p.components;

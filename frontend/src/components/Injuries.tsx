@@ -6,8 +6,8 @@ export default function Injuries({ d }: { d: any }) {
   const inj = d.injuries;
   const scanned = d.documents.filter((x: any) => x.scanned_pages > 0).reduce((a: number, x: any) => a + x.scanned_pages, 0);
   return (
-    <div className="grid gap-5 lg:grid-cols-3">
-      <div className="card p-5 lg:col-span-2">
+    <div className="grid gap-5 lg:grid-cols-3 2xl:grid-cols-4">
+      <div className="card p-5 lg:col-span-2 2xl:col-span-3">
         <SectionHeader icon={HeartPulse} title="Injuries and treatment"
           note={`from ${d.documents.length} documents (${scanned} scanned pages read by OCR) · ${inj.method === "llm" ? "AI summary, every line cited" : "diagnosis lines found by rules"}`} />
         {d.ai_coverage?.sampled_docs?.length > 0 && (
@@ -15,7 +15,7 @@ export default function Injuries({ d }: { d: any }) {
             <Info size={13} />Free-tier limit: AI read the first and last pages of {d.ai_coverage.sampled_docs.length} long documents. Every page is still searchable.
           </div>
         )}
-        <ShowMore items={inj.injuries} limit={4} className="stagger grid gap-3 md:grid-cols-2"
+        <ShowMore items={inj.injuries} limit={4} className="stagger grid gap-3 md:grid-cols-2 2xl:grid-cols-3"
           empty={<div className="text-sm text-slate-500">No injury facts yet.</div>}
           render={(i: any, k: number) => (
             <div key={k} className="card-lift rounded-2xl border border-rose-100 bg-white p-4 transition">

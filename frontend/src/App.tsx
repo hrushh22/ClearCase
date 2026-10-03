@@ -70,7 +70,7 @@ function Gate() {
     api.health().then((h) => setState(h.gate && !session.get() ? "login" : "ok")).catch(() => setState("ok"));
     return () => window.removeEventListener("clearcase:auth", onAuth);
   }, []);
-  if (state === "checking") return <div className="mx-auto max-w-[1400px] p-6"><PageSkeleton /></div>;
+  if (state === "checking") return <div className="w-full px-3 sm:px-5 lg:px-8 2xl:px-12 py-6"><PageSkeleton /></div>;
   if (state === "login") return <Login onDone={() => setState("ok")} />;
   return <Attorney />;
 }
@@ -110,29 +110,29 @@ function Attorney() {
   const running = status?.pipeline?.running;
 
   const navCls = ({ isActive }: { isActive: boolean }) =>
-    `inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition ${isActive ? "bg-rose-50 text-rose-700 shadow-inner" : "text-slate-600 hover:bg-rose-50 hover:text-rose-700"}`;
+    `inline-flex shrink-0 items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-medium transition md:px-3.5 ${isActive ? "bg-rose-50 text-rose-700 shadow-inner" : "text-slate-600 hover:bg-rose-50 hover:text-rose-700"}`;
   return (
     <SourceProvider>
       <div className="min-h-screen">
         <header className="sticky top-0 z-40 border-b border-rose-100 bg-white/80 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-3 px-4 py-2.5">
-            <div className="flex items-center gap-2.5 pr-2">
+          <div className="flex w-full items-center gap-2 px-3 sm:px-5 lg:px-8 2xl:px-12 py-2.5 sm:gap-3">
+            <div className="flex shrink-0 items-center gap-2.5 sm:pr-2">
               <Logo />
-              <div className="leading-tight">
+              <div className="hidden leading-tight sm:block">
                 <div className="grad-text text-lg font-extrabold tracking-tight">ClearCase</div>
                 <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-400">Case intelligence</div>
               </div>
             </div>
-            <nav className="flex gap-1">
-              <NavLink to="/" end className={navCls}><LayoutDashboard size={16} aria-hidden />Case digest</NavLink>
-              <NavLink to="/xray" className={navCls}><ScanSearch size={16} aria-hidden />Case X-Ray</NavLink>
-              <NavLink to="/share" className={navCls}><Share2 size={16} aria-hidden />Share with providers</NavLink>
+            <nav className="flex min-w-0 gap-1" aria-label="Main">
+              <NavLink to="/" end className={navCls} title="Case digest"><LayoutDashboard size={16} aria-hidden /><span className="hidden md:inline">Case digest</span></NavLink>
+              <NavLink to="/xray" className={navCls} title="Case X-Ray"><ScanSearch size={16} aria-hidden /><span className="hidden md:inline">Case X-Ray</span></NavLink>
+              <NavLink to="/share" className={navCls} title="Share with providers"><Share2 size={16} aria-hidden /><span className="hidden md:inline">Share with providers</span></NavLink>
             </nav>
-            <div className="ml-auto flex items-center gap-2">
-              <div className="group relative">
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+              <div className="group relative hidden sm:block">
                 <div className={`chip cursor-default gap-1.5 px-3 py-1.5 text-xs ${ls?.kind === "mirror" ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-700"}`}>
                   <span className={`h-2 w-2 rounded-full ${ls?.kind === "mirror" ? "bg-amber-500" : "animate-pulse bg-emerald-500"}`} />
-                  {ls ? (ls.kind === "mirror" ? "Offline mirror" : "Live from Clio · read-only") : "Not synced yet"}
+                  <span className="hidden lg:inline"><span className="hidden lg:inline">{ls ? (ls.kind === "mirror" ? "Offline mirror" : "Live from Clio · read-only") : "Not synced yet"}</span><span className="lg:hidden">{ls?.kind === "mirror" ? "Mirror" : "Live"}</span></span><span className="lg:hidden">{ls?.kind === "mirror" ? "Mirror" : "Live"}</span>
                   <Info size={13} className="opacity-60" aria-hidden />
                 </div>
                 <div className="pointer-events-none absolute right-0 top-full z-50 mt-2 w-72 rounded-2xl border border-rose-100 bg-white p-3 text-xs text-slate-600 opacity-0 shadow-xl transition group-hover:opacity-100">
@@ -142,7 +142,7 @@ function Attorney() {
                 </div>
               </div>
               <button className="btn-primary" disabled={running} onClick={() => sync(false)} title="Read Clio (GET only); rebuild only if something changed">
-                <RefreshCw size={15} className={running ? "animate-spin" : ""} aria-hidden />{running ? "Syncing…" : "Sync"}
+                <RefreshCw size={15} className={running ? "animate-spin" : ""} aria-hidden /><span className="hidden sm:inline">{running ? "Syncing…" : "Sync"}</span>
               </button>
               <button className="btn-ghost" disabled={running} onClick={() => sync(true)} title="Rebuild the digest even if Clio did not change (slow)">
                 <RotateCcw size={15} aria-hidden /><span className="hidden xl:inline">Rebuild</span>
@@ -161,7 +161,7 @@ function Attorney() {
             </div>
           )}
         </header>
-        <main className="mx-auto max-w-[1400px] px-4 pb-24 pt-5">
+        <main className="w-full px-3 sm:px-5 lg:px-8 2xl:px-12 pb-24 pt-4 sm:pt-5">
           {!d && !err && <PageSkeleton />}
           {err && !d && (
             <div className="card p-8 text-center">

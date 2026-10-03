@@ -64,7 +64,7 @@ export default function DigDeep({ d }: { d: any }) {
       </div>
       <div className="card p-5">
         <SectionHeader icon={FolderOpen} title="Documents in the file" note={`${d.documents.length} documents`} />
-        <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {d.documents.map((doc: any) => (
             <button key={doc.id} onClick={() => open({ source_type: "document", source_id: doc.id, page: 1 })}
               className="rounded-lg border p-3 text-left hover:border-rose-300 hover:bg-rose-50/40">

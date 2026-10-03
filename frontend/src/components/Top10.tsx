@@ -10,7 +10,7 @@ export default function Top10({ d }: { d: any }) {
     <div className="card p-5">
       <SectionHeader icon={ListOrdered} title="The ten that matter"
         note={`ranked from ${t.considered} notes, emails and tasks · ${t.method === "llm" ? "AI-ranked" : "keyword-ranked"}`} />
-      <ShowMore items={t.items} limit={5} className="grid gap-1.5 md:grid-cols-2" render={(it: any, i: number) => (
+      <ShowMore items={t.items} limit={5} className="grid gap-1.5 md:grid-cols-2 2xl:grid-cols-3" render={(it: any, i: number) => (
         <button key={it.source_type + it.source_id} onClick={() => open(it)}
           className="row-hover group flex w-full items-start gap-3 border border-transparent p-2.5 text-left hover:border-rose-100">
           <span className="grad-bg mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm">{i + 1}</span>

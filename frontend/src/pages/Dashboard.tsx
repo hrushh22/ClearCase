@@ -61,9 +61,9 @@ export default function Dashboard({ d, mode, setMode }: { d: any; mode: "brief" 
         <div key={tab} className="fade-up space-y-5" role="tabpanel">
           {tab === "today" && (
             <>
-              <div className="grid gap-5 lg:grid-cols-3">
-                <div className="lg:col-span-2"><ChangesFeed d={d} /></div>
-                <Attention d={d} />
+              <div className="grid gap-5 lg:grid-cols-3 2xl:grid-cols-5">
+                <div className="lg:col-span-2 2xl:col-span-3"><ChangesFeed d={d} /></div>
+                <div className="2xl:col-span-2"><Attention d={d} /></div>
               </div>
               <Top10 d={d} />
             </>
@@ -73,8 +73,8 @@ export default function Dashboard({ d, mode, setMode }: { d: any; mode: "brief" 
           {tab === "story" && (
             <>
               <Tracker d={d} />
-              <div className="grid gap-5 lg:grid-cols-3">
-                <div className="lg:col-span-2"><Timeline d={d} /></div>
+              <div className="grid gap-5 lg:grid-cols-3 2xl:grid-cols-4">
+                <div className="lg:col-span-2 2xl:col-span-3"><Timeline d={d} /></div>
                 <Heatmap d={d} />
               </div>
             </>

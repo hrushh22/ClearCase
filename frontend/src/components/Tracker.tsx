@@ -8,17 +8,17 @@ export const TRACKER = ["Treatment", "Demand sent", "Negotiation", "Litigation",
 /** Package-tracker style stage bar. `index` -1 = unknown. */
 export function StageBar({ index, alive = true }: { index: number; alive?: boolean }) {
   return (
-    <div className="flex items-center">
+    <div className="flex min-w-0 items-center">
       {TRACKER.map((s, i) => {
         const done = i < index, cur = i === index;
         return (
-          <div key={s} className="flex flex-1 items-center last:flex-none">
+          <div key={s} className="flex min-w-0 flex-1 items-center last:flex-none">
             <div className="flex flex-col items-center">
-              <div className={`flex h-9 w-9 items-center justify-center rounded-full border-2 text-sm font-bold transition
+              <div className={`flex h-8 w-8 shrink-0 items-center sm:h-9 sm:w-9 justify-center rounded-full border-2 text-sm font-bold transition
                 ${cur ? "border-rose-600 bg-rose-600 text-white ring-4 ring-rose-100" : done ? "border-rose-600 bg-rose-50 text-rose-700" : "border-slate-300 bg-white text-slate-400"}`}>
                 {done ? "✓" : i + 1}
               </div>
-              <div className={`mt-1 w-20 text-center text-xs ${cur ? "font-semibold text-rose-700" : "text-slate-500"}`}>{s}</div>
+              <div className={`mt-1 w-14 text-center text-[10px] leading-tight sm:w-20 sm:text-xs ${cur ? "font-semibold text-rose-700" : "text-slate-500"}`}>{s}</div>
             </div>
             {i < TRACKER.length - 1 && <div className={`mx-1 mb-5 h-1 flex-1 rounded ${i < index ? "bg-rose-600" : "bg-slate-200"}`} />}
           </div>

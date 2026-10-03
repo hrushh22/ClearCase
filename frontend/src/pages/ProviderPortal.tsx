@@ -74,15 +74,15 @@ function Shell({ children, firm }: { children: any; firm?: string }) {
   return (
     <div className="min-h-screen">
       <div className="sticky top-0 z-30 border-b border-rose-100 bg-white/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
+        <div className="flex w-full items-center justify-between gap-3 px-3 sm:px-5 lg:px-8 2xl:px-12 py-3">
           <div className="flex items-center gap-2">
             <div className="grad-bg flex h-8 w-8 items-center justify-center rounded-xl text-white shadow-md shadow-rose-200"><Scale size={17} /></div>
             <div className="font-semibold text-slate-900">{firm || "Case status"}</div>
           </div>
-          <div className="text-xs text-slate-500">Provider case status · powered by <span className="grad-text font-semibold">ClearCase</span></div>
+          <div className="hidden text-xs text-slate-500 sm:block">Provider case status · powered by <span className="grad-text font-semibold">ClearCase</span></div>
         </div>
       </div>
-      <div className="mx-auto max-w-3xl p-4">{children}</div>
+      <div className="w-full px-3 sm:px-5 lg:px-8 2xl:px-12 py-4">{children}</div>
     </div>
   );
 }

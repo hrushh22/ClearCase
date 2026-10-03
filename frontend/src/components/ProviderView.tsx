@@ -40,8 +40,8 @@ export default function ProviderView({ firm, provider, claims, waterfall, events
   const rest = claims.filter((c) => c !== stageClaim && c !== statusClaim && c !== lastMove && !c.text.startsWith("Current stage:"));
 
   return (
-    <div className="space-y-4">
-      <div className="card fade-up overflow-hidden p-0">
+    <div className="grid items-start gap-4 lg:grid-cols-2">
+      <div className="card fade-up overflow-hidden p-0 lg:col-span-2">
         <div className="grad-bg px-5 py-4 text-white">
           <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/85">Case status shared by {firm} with {provider}</div>
           <div className="mt-1 flex flex-wrap items-center gap-3">
@@ -110,7 +110,7 @@ export default function ProviderView({ firm, provider, claims, waterfall, events
           {onSubscribe && (
             <form className="mt-3 flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); onSubscribe(email); }}>
               <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@yourpractice.com"
-                className="flex-1 rounded-xl border border-rose-100 px-3 py-2 text-sm outline-none focus:border-rose-300 focus:ring-4 focus:ring-rose-100" />
+                className="min-w-0 flex-1 rounded-xl border border-rose-100 px-3 py-2 text-sm outline-none focus:border-rose-300 focus:ring-4 focus:ring-rose-100" />
               <button className="btn-primary">Tell me when the case moves</button>
             </form>
           )}

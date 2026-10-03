@@ -22,10 +22,10 @@ export default function Hero({ d }: { d: any }) {
   ];
   return (
     <section className="card fade-up overflow-hidden p-0">
-      <div className="grad-bg relative px-6 pb-20 pt-6 text-white">
+      <div className="grad-bg relative px-4 pb-20 pt-5 text-white sm:px-6 sm:pt-6">
         <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-white/10 blur-2xl" />
-        <div className="relative flex flex-wrap items-center gap-5">
-          <div className="relative">
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-5">
+          <div className="relative w-fit">
             {c.photo ? (
               <img src={c.photo.data_url} alt={c.name} className="h-24 w-24 rounded-2xl object-cover ring-4 ring-white/40 shadow-lg" />
             ) : (
@@ -35,7 +35,7 @@ export default function Hero({ d }: { d: any }) {
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-3xl font-extrabold tracking-tight drop-shadow-sm">{c.name}</h1>
+              <h1 className="text-2xl font-extrabold tracking-tight drop-shadow-sm sm:text-3xl">{c.name}</h1>
               <span className="chip bg-white/25 text-white backdrop-blur"><BadgeCheck size={12} />{s.status}</span>
               {s.clio_stage && <span className="chip bg-white text-rose-600">{s.clio_stage}</span>}
             </div>
@@ -48,7 +48,7 @@ export default function Hero({ d }: { d: any }) {
               <span>Attorney <b className="text-white">{s.responsible_attorney || "not set"}</b></span>
             </div>
           </div>
-          <div className="min-w-[230px] rounded-2xl bg-white/15 p-3.5 backdrop-blur-md ring-1 ring-white/25">
+          <div className="w-full rounded-2xl bg-white/15 p-3.5 backdrop-blur-md ring-1 ring-white/25 sm:w-auto sm:min-w-[230px]">
             <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/80"><Phone size={12} />Last real contact</div>
             {contact.last ? (
               <>
@@ -60,7 +60,7 @@ export default function Hero({ d }: { d: any }) {
         </div>
       </div>
 
-      <div className="relative -mt-14 px-4 pb-4">
+      <div className="relative -mt-14 px-3 pb-4 sm:px-4">
         <div className="stagger grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {tiles.map((t) => (
             <div key={t.label} className="card card-lift p-4">
@@ -68,7 +68,7 @@ export default function Hero({ d }: { d: any }) {
                 <div className="card-h">{t.label}</div>
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-500"><t.icon size={17} /></div>
               </div>
-              <div className="mt-1 text-3xl font-extrabold tracking-tight text-slate-900">{t.value}</div>
+              <div className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">{t.value}</div>
               <div className="mt-0.5 text-sm text-slate-500">{t.sub}</div>
               {t.badge && <div className="chip mt-2 bg-red-50 text-red-700"><TriangleAlert size={12} />{t.badge}</div>}
               <div className="mt-2 flex flex-wrap gap-1">{(t.src || []).slice(0, 3).map((x: any, i: number) => <Cite key={i} src={x} />)}</div>

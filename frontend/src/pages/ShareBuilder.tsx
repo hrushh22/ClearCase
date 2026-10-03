@@ -83,26 +83,26 @@ export default function ShareBuilder({ d }: { d: any }) {
   return (
     <div className="space-y-5">
       <section className="card fade-up overflow-hidden p-0">
-        <div className="grad-bg px-6 py-5 text-white">
+        <div className="grad-bg px-4 py-5 text-white sm:px-6">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/85"><Link2 size={14} />Share with providers</div>
-          <div className="mt-1 text-2xl font-extrabold tracking-tight">Give a treating provider live, signed case status</div>
+          <div className="mt-1 text-xl font-extrabold tracking-tight sm:text-2xl">Give a treating provider live, signed case status</div>
           <div className="mt-1 max-w-3xl text-sm text-white/90">
             The AI proposes what to share and what to hold back; you decide. The provider sees exactly the preview, every line digitally signed,
             and their link updates itself after every sync.
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-6 px-6 py-3">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
           <Step n={1} title="Pick a provider" active={!prop} done={!!prop} />
-          <span className="h-px w-10 bg-rose-200" />
+          <span className="hidden h-px w-10 bg-rose-200 sm:block" />
           <Step n={2} title="Choose what to share" active={!!prop && !created} done={!!created} />
-          <span className="h-px w-10 bg-rose-200" />
+          <span className="hidden h-px w-10 bg-rose-200 sm:block" />
           <Step n={3} title="Preview, sign and send" active={!!prop && !created} done={!!created} />
         </div>
       </section>
 
       <section className="card p-5">
         <SectionHeader icon={Hospital} title="1 · Pick a provider" note={`${providers.length} treating providers found in Clio`} />
-        <div className="stagger grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="stagger grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
           {providers.map((p) => {
             const Icon = p.type === "Person" ? UserRound : /hospital|surgical|center/i.test(p.name) ? Hospital : Stethoscope;
             const sel = pid === p.id;
@@ -117,8 +117,8 @@ export default function ShareBuilder({ d }: { d: any }) {
         </div>
       </section>
 
-      <div className="grid items-start gap-5 lg:grid-cols-2">
-        <section className="card p-5">
+      <div className="grid min-w-0 items-start gap-5 lg:grid-cols-2">
+        <section className="card min-w-0 p-5">
           <SectionHeader icon={Sparkles} title="2 · Choose what to share" note={loading ? "the AI is reviewing the file…" : `proposed by ${prop?.method === "llm" ? "AI" : "rules"} · you decide`} />
           {loading && <div className="space-y-2">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton h-16" />)}</div>}
           {!loading && prop && (
@@ -139,7 +139,7 @@ export default function ShareBuilder({ d }: { d: any }) {
           )}
         </section>
 
-        <section className="space-y-3 lg:sticky lg:top-24">
+        <section className="min-w-0 space-y-3 lg:sticky lg:top-24">
           <div className="card p-4">
             <SectionHeader icon={Send} title="3 · Preview, sign and send" />
             <div className="flex flex-wrap items-center gap-2">
@@ -173,7 +173,7 @@ export default function ShareBuilder({ d }: { d: any }) {
       <section className="card p-5">
         <SectionHeader icon={Link2} title="Shared links and access log" note={`${links.length} link${links.length === 1 ? "" : "s"}`} />
         {!links.length && <div className="text-sm text-slate-500">No links shared yet.</div>}
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {links.map((l) => (
             <div key={l.token} className={`card-lift rounded-2xl border border-rose-100 bg-white p-4 transition ${l.revoked ? "opacity-50" : ""}`}>
               <div className="flex items-start justify-between gap-2">
