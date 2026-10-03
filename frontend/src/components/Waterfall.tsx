@@ -1,3 +1,5 @@
+import { Landmark, RotateCcw, Save } from "lucide-react";
+import { SectionHeader } from "./ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, ReferenceLine } from "recharts";
 import { Cite } from "./SourceViewer";
@@ -8,7 +10,7 @@ type LienRow = { name: string; amount: number; reduction: number; include: boole
 const STATUS = {
   full: { label: "fully covered", cls: "bg-emerald-100 text-emerald-800", color: "#10b981" },
   partial: { label: "partly covered", cls: "bg-amber-100 text-amber-800", color: "#f59e0b" },
-  none: { label: "not covered", cls: "bg-rose-100 text-rose-800", color: "#f43f5e" },
+  none: { label: "not covered", cls: "bg-red-100 text-red-800", color: "#dc2626" },
 } as const;
 
 export default function Waterfall({ d }: { d: any }) {
@@ -62,16 +64,12 @@ export default function Waterfall({ d }: { d: any }) {
 
   return (
     <div className="card p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <div className="card-h">Settlement waterfall</div>
-          <div className="text-sm text-slate-600">Gross settlement → liens → fee → costs → what the client takes home. Math is plain code, not AI.</div>
-        </div>
+      <SectionHeader icon={Landmark} title="Settlement waterfall" note="Gross settlement → fee → costs → liens → what the client takes home. Plain math, not AI.">
         <div className="flex gap-2">
-          <button className="btn-ghost" onClick={reset}>Reset assumptions</button>
-          <button className="btn-primary" onClick={save}>Save scenario</button>
+          <button className="btn-ghost" onClick={reset}><RotateCcw size={14} />Reset assumptions</button>
+          <button className="btn-primary" onClick={save}><Save size={14} />Save scenario</button>
         </div>
-      </div>
+      </SectionHeader>
       {saved && <div className="mt-2 text-xs text-emerald-700">{saved}</div>}
 
       <div className="mt-4 grid gap-6 lg:grid-cols-5">
@@ -82,10 +80,10 @@ export default function Waterfall({ d }: { d: any }) {
               <span className="text-2xl font-bold tabular-nums">{money(gross)}</span>
             </div>
             <input type="range" min={0} max={Math.round(wf.max_gross)} step={1000} value={gross}
-              onChange={(e) => setGross(Number(e.target.value))} className="w-full accent-indigo-600" />
+              onChange={(e) => setGross(Number(e.target.value))} className="w-full accent-rose-600" />
             <div className="flex flex-wrap gap-1 text-xs">
               {cov && <button className="chip bg-emerald-50 text-emerald-700" onClick={() => setGross(cov)}>coverage cap {money(cov)}</button>}
-              {cv && <button className="chip bg-indigo-50 text-indigo-700" onClick={() => setGross(cv)}>case value {money(cv)}</button>}
+              {cv && <button className="chip bg-rose-50 text-rose-700" onClick={() => setGross(cv)}>case value {money(cv)}</button>}
               {res?.breakeven_gross && <button className="chip bg-slate-100 text-slate-700" onClick={() => setGross(Math.ceil(res.breakeven_gross / 1000) * 1000)}>
                 break-even {money(res.breakeven_gross)}</button>}
             </div>
@@ -98,16 +96,16 @@ export default function Waterfall({ d }: { d: any }) {
             <span className="chip bg-amber-100 text-amber-800">assumption</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-slate-50 p-3">
+            <div className="rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50 to-white p-3">
               <div className="card-h">Client net</div>
-              <div className={`text-3xl font-bold tabular-nums ${res?.client_net < 0 ? "text-rose-600" : "text-emerald-700"}`}>{money(res?.client_net)}</div>
+              <div className={`text-3xl font-bold tabular-nums ${res?.client_net < 0 ? "text-red-600" : "text-emerald-700"}`}>{money(res?.client_net)}</div>
             </div>
-            <div className="rounded-xl bg-slate-50 p-3">
+            <div className="rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50 to-white p-3">
               <div className="card-h">Saved by negotiating</div>
-              <div className="text-3xl font-bold tabular-nums text-indigo-700">{money(res?.liens.reduce((a: number, r: any) => a + r.saved, 0))}</div>
+              <div className="text-3xl font-bold tabular-nums text-rose-700">{money(res?.liens.reduce((a: number, r: any) => a + r.saved, 0))}</div>
             </div>
           </div>
-          {res?.shortfall && <div className="rounded-lg bg-rose-50 p-2 text-sm text-rose-800">At this amount the liens are not all covered; the client would net nothing.</div>}
+          {res?.shortfall && <div className="rounded-lg bg-red-50 p-2 text-sm text-red-800">At this amount the liens are not all covered; the client would net nothing.</div>}
           <ul className="space-y-0.5 text-xs text-slate-500">
             {wf.assumptions.map((a: string, i: number) => <li key={i}>⚠ {a}</li>)}
           </ul>
@@ -123,7 +121,7 @@ export default function Waterfall({ d }: { d: any }) {
               <Bar dataKey="base" stackId="a" fill="transparent" isAnimationActive={false} />
               <Bar dataKey="bar" stackId="a" isAnimationActive={false} radius={[3, 3, 0, 0]}>
                 {chart.map((s: any, i: number) => (
-                  <Cell key={i} fill={s.kind === "gross" ? "#6366f1" : s.kind === "net" ? (s.value < 0 ? "#f43f5e" : "#10b981") :
+                  <Cell key={i} fill={s.kind === "gross" ? "#f43f5e" : s.kind === "net" ? (s.value < 0 ? "#dc2626" : "#10b981") :
                     s.kind === "lien" ? STATUS[s.status as keyof typeof STATUS].color : "#94a3b8"} />
                 ))}
               </Bar>
@@ -155,7 +153,7 @@ export default function Waterfall({ d }: { d: any }) {
                   <td className="text-right tabular-nums">{money(l.amount)}</td>
                   <td>
                     <div className="flex items-center gap-2 px-2">
-                      <input type="range" min={0} max={0.6} step={0.05} value={l.reduction} className="flex-1 accent-indigo-600"
+                      <input type="range" min={0} max={0.6} step={0.05} value={l.reduction} className="flex-1 accent-rose-600"
                         onChange={(e) => setLien(i, { reduction: Number(e.target.value) })} />
                       <span className="w-10 text-right tabular-nums text-xs">−{Math.round(l.reduction * 100)}%</span>
                     </div>

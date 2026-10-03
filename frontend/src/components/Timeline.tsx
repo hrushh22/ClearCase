@@ -1,10 +1,12 @@
+import { CalendarRange } from "lucide-react";
+import { SectionHeader } from "./ui";
 import { useMemo, useState } from "react";
 import { Cite } from "./SourceViewer";
 import { fmtDate, money } from "../lib/api";
 
 const CAT: Record<string, string> = {
-  medical: "bg-rose-500", money: "bg-emerald-500", insurance: "bg-teal-500", negotiation: "bg-violet-500", deadline: "bg-amber-500",
-  court: "bg-indigo-500", client: "bg-sky-500", risk: "bg-red-600", other: "bg-slate-400",
+  medical: "bg-red-500", money: "bg-emerald-500", insurance: "bg-teal-500", negotiation: "bg-violet-500", deadline: "bg-amber-500",
+  court: "bg-rose-500", client: "bg-sky-500", risk: "bg-red-600", other: "bg-slate-400",
 };
 
 const toDay = (s: string) => Math.floor(new Date(s + "T12:00:00").getTime() / 86400000);
@@ -40,8 +42,8 @@ export default function Timeline({ d }: { d: any }) {
 
   return (
     <div className="card p-5">
+      <SectionHeader icon={CalendarRange} title="Timeline" note="every date links to its source" />
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div className="card-h">Timeline · every date links to its source</div>
         <div className="flex flex-wrap gap-1">
           {Object.keys(CAT).map((c) => (
             <button key={c} onClick={() => setCat(cat === c ? null : c)}
@@ -49,16 +51,16 @@ export default function Timeline({ d }: { d: any }) {
               <span className={`h-2 w-2 rounded-full ${CAT[c]}`} />{c}
             </button>
           ))}
-          <button className="chip bg-indigo-50 text-indigo-700" onClick={() => setAll(!all)}>{all ? "Milestones only" : `All ${events.length} dated facts`}</button>
+          <button className="chip bg-rose-50 text-rose-700" onClick={() => setAll(!all)}>{all ? "Milestones only" : `All ${events.length} dated facts`}</button>
         </div>
       </div>
 
-      <div className="mt-4 rounded-xl bg-slate-50 p-4">
+      <div className="mt-4 rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50 to-white p-4">
         <div className="flex items-center justify-between text-sm">
-          <span className="font-medium">Time travel: the case as of <b className="text-indigo-700">{fmtDate(at)}</b></span>
+          <span className="font-medium">Time travel: the case as of <b className="text-rose-700">{fmtDate(at)}</b></span>
           <button className="chip bg-white text-slate-600" onClick={() => setT(toDay(new Date().toISOString().slice(0, 10)))}>today</button>
         </div>
-        <input type="range" min={min} max={max} value={t} onChange={(e) => setT(Number(e.target.value))} className="mt-2 w-full accent-indigo-600" />
+        <input type="range" min={min} max={max} value={t} onChange={(e) => setT(Number(e.target.value))} className="mt-2 w-full accent-rose-600" />
         <div className="mt-2 grid gap-3 text-sm md:grid-cols-4">
           <div><div className="card-h">Known facts</div><div className="text-xl font-semibold">{state.count}</div></div>
           <div><div className="card-h">Owed to providers (bills seen so far)</div><div className="text-xl font-semibold">{money(state.owed)}</div></div>

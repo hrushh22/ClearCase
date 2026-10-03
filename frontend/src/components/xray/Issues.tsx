@@ -3,8 +3,8 @@ import { Cite, useSource } from "../SourceViewer";
 import { api, fmtDate, fmtDateTime } from "../../lib/api";
 
 const TYPE_LABEL: Record<string, { label: string; glyph: string; cls: string }> = {
-  contradiction: { label: "Contradiction", glyph: "≠", cls: "bg-rose-100 text-rose-800" },
-  amount_mismatch: { label: "Amount mismatch", glyph: "$≠", cls: "bg-rose-100 text-rose-800" },
+  contradiction: { label: "Contradiction", glyph: "≠", cls: "bg-red-100 text-red-800" },
+  amount_mismatch: { label: "Amount mismatch", glyph: "$≠", cls: "bg-red-100 text-red-800" },
   missing_evidence: { label: "Evidence gap", glyph: "?", cls: "bg-amber-100 text-amber-800" },
   timeline_gap: { label: "Timeline", glyph: "⏱", cls: "bg-amber-100 text-amber-800" },
   dependency: { label: "Waiting on", glyph: "⧗", cls: "bg-sky-100 text-sky-800" },
@@ -19,7 +19,7 @@ export function SplitView({ issue }: { issue: any }) {
       <div className="text-[11px] font-semibold uppercase text-slate-500">{which} · {s.source_type}{s.page ? ` p.${s.page}` : ""} · {fmtDate(s.date)}</div>
       <div className="mt-1 text-sm">{s.text}</div>
       {s.quote && s.quote !== s.text && <div className="mt-1 text-xs italic text-slate-500">“{s.quote}”</div>}
-      <button className="btn-ghost mt-2 px-0 text-indigo-700" onClick={() => open(s)}>Open {which.toLowerCase()} source →</button>
+      <button className="btn-ghost mt-2 px-0 text-rose-700" onClick={() => open(s)}>Open {which.toLowerCase()} source →</button>
     </div>
   ) : (
     <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed p-3 text-xs text-slate-500">
@@ -31,8 +31,8 @@ export function SplitView({ issue }: { issue: any }) {
       <div className="flex flex-col items-stretch gap-2 md:flex-row md:items-center">
         {side(issue.left, "Left")}
         <div className="flex shrink-0 flex-col items-center px-2 text-center">
-          <span className="text-2xl text-rose-600" aria-hidden>≠</span>
-          <span className="text-xs font-semibold text-rose-700">{issue.label}</span>
+          <span className="text-2xl text-red-600" aria-hidden>≠</span>
+          <span className="text-xs font-semibold text-red-700">{issue.label}</span>
         </div>
         {side(issue.right, "Right")}
       </div>
@@ -60,7 +60,7 @@ function Resolve({ issue, onDone }: { issue: any; onDone: () => void }) {
       {draft && (
         <div className="mt-2">
           <textarea readOnly value={draft.content} className="h-44 w-full rounded border bg-white p-2 font-mono text-xs" />
-          <button className="btn-ghost text-indigo-700" onClick={() => navigator.clipboard?.writeText(draft.content)}>Copy draft</button>
+          <button className="btn-ghost text-rose-700" onClick={() => navigator.clipboard?.writeText(draft.content)}>Copy draft</button>
         </div>
       )}
       {issue.actions?.length > 0 && (
@@ -117,7 +117,7 @@ export default function Issues({ x, spotlight, setSpotlight, onFocus, reload, op
           const life = x.lifecycle?.[i.id];
           return (
             <div key={i.id} ref={(el) => { refs.current[i.id] = el; }}
-              className={`rounded-xl border bg-white transition ${spotlight && !lit ? "opacity-30" : ""} ${lit && spot[idx % spot.length] === i.id ? "ring-2 ring-amber-400" : ""}`}>
+              className={`card-lift rounded-2xl border border-rose-100 bg-white transition ${spotlight && !lit ? "opacity-30" : ""} ${lit && spot[idx % spot.length] === i.id ? "ring-2 ring-amber-400" : ""}`}>
               <button className="flex w-full items-start gap-3 p-3 text-left" onClick={() => { setOpen(isOpen ? null : i.id);
                 onFocus([`issue_${i.id}`, ...(i.related_fact_ids || []).map((f: string) => `fact_${f}`)]); }}>
                 <span className={`chip shrink-0 ${t.cls}`}><span aria-hidden>{t.glyph}</span>{t.label}</span>

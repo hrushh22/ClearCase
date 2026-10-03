@@ -1,3 +1,5 @@
+import { MessagesSquare } from "lucide-react";
+import { SectionHeader } from "./ui";
 import { Cite } from "./SourceViewer";
 import { fmtDate } from "../lib/api";
 
@@ -17,17 +19,14 @@ export default function Heatmap({ d }: { d: any }) {
   const maxAll = Math.max(...rows.map((r) => r.all));
   return (
     <div className="card p-5">
-      <div className="flex items-baseline justify-between">
-        <div className="card-h">Communication heatmap</div>
-        <div className="text-xs text-slate-500">{c.count} client contacts · darker = more emails and calls that month</div>
-      </div>
+      <SectionHeader icon={MessagesSquare} title="Communication heatmap" note={`${c.count} client contacts · darker = more emails and calls`} />
       <div className="mt-3 flex flex-wrap gap-1">
         {months.map((mo) => {
           const r = by[mo] || { all: 0, client: 0 };
           const a = r.all / maxAll;
           return (
             <div key={mo} title={`${mo}: ${r.all} communications, ${r.client} with the client`}
-              className="relative h-7 w-7 rounded" style={{ background: r.all ? `rgba(79,70,229,${0.15 + a * 0.85})` : "#f1f5f9" }}>
+              className="relative h-7 w-7 rounded" style={{ background: r.all ? `rgba(244,63,94,${0.15 + a * 0.85})` : "#f1f5f9" }}>
               {r.client > 0 && <span className="absolute bottom-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-amber-400" />}
               {mo.endsWith("-01") && <span className="absolute -top-4 left-0 text-[10px] text-slate-500">{mo.slice(0, 4)}</span>}
             </div>

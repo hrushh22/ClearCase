@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import { Scale } from "lucide-react";
 import nacl from "tweetnacl";
 import ProviderView, { type ProviderClaim } from "../components/ProviderView";
 import ChatWidget from "../components/ChatWidget";
@@ -34,7 +35,7 @@ export default function ProviderPortal() {
   }, [token]);
 
   if (err) return <Shell><div className="card p-8 text-center text-slate-600">This link was not found.</div></Shell>;
-  if (!data) return <Shell><div className="p-8 text-center text-slate-500">Loading…</div></Shell>;
+  if (!data) return <Shell><div className="space-y-4"><div className="skeleton h-40" /><div className="skeleton h-28" /><div className="skeleton h-28" /></div></Shell>;
   if (data.error) return (
     <Shell firm={data.firm_name}>
       <div className="card p-8 text-center text-slate-600">
@@ -56,7 +57,7 @@ export default function ProviderPortal() {
         <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-500" aria-hidden />
         Live · last case update {new Date(data.updated_at).toLocaleString()} · checked {checked ? checked.toLocaleTimeString() : "…"}
       </div>
-      <div className={`mb-4 rounded-xl p-3 text-sm ${allOk ? "bg-emerald-50 text-emerald-900" : "bg-rose-50 text-rose-900"}`}>
+      <div className={`mb-4 rounded-xl p-3 text-sm ${allOk ? "bg-emerald-50 text-emerald-900" : "bg-red-50 text-red-900"}`}>
         {allOk ? `Every item below was checked in your browser: it came from ${data.firm_name} and has not been changed.`
           : "Some items could not be verified. Treat them with caution and contact the firm."}
       </div>
@@ -72,10 +73,13 @@ export default function ProviderPortal() {
 function Shell({ children, firm }: { children: any; firm?: string }) {
   return (
     <div className="min-h-screen">
-      <div className="border-b bg-white">
+      <div className="sticky top-0 z-30 border-b border-rose-100 bg-white/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
-          <div className="font-semibold">{firm || "Case status"}</div>
-          <div className="text-xs text-slate-500">Provider case status · powered by ClearCase</div>
+          <div className="flex items-center gap-2">
+            <div className="grad-bg flex h-8 w-8 items-center justify-center rounded-xl text-white shadow-md shadow-rose-200"><Scale size={17} /></div>
+            <div className="font-semibold text-slate-900">{firm || "Case status"}</div>
+          </div>
+          <div className="text-xs text-slate-500">Provider case status · powered by <span className="grad-text font-semibold">ClearCase</span></div>
         </div>
       </div>
       <div className="mx-auto max-w-3xl p-4">{children}</div>

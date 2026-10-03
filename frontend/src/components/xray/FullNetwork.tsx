@@ -12,19 +12,19 @@ const TYPE: Record<string, { label: string; glyph: string; cls: string; col: num
   document: { label: "Document", glyph: "▤", cls: "bg-slate-50 border-slate-300 text-slate-700", col: 0 },
   source: { label: "Note / email / record", glyph: "✉", cls: "bg-slate-50 border-slate-300 text-slate-700", col: 0 },
   fact: { label: "Fact", glyph: "•", cls: "bg-white border-slate-300 text-slate-800", col: 1 },
-  claim: { label: "Proposition", glyph: "◆", cls: "bg-indigo-50 border-indigo-400 text-indigo-900 font-semibold", col: 2 },
-  issue: { label: "Contradiction", glyph: "≠", cls: "bg-rose-50 border-rose-400 text-rose-900", col: 2 },
+  claim: { label: "Proposition", glyph: "◆", cls: "bg-rose-50 border-rose-400 text-rose-900 font-semibold", col: 2 },
+  issue: { label: "Contradiction", glyph: "≠", cls: "bg-red-50 border-red-400 text-red-900", col: 2 },
   gap: { label: "Gap / open item", glyph: "?", cls: "bg-amber-50 border-amber-400 border-dashed text-amber-900", col: 2 },
-  injury: { label: "Injury region", glyph: "✚", cls: "bg-rose-50 border-rose-300 text-rose-900", col: 3 },
+  injury: { label: "Injury region", glyph: "✚", cls: "bg-red-50 border-red-300 text-red-900", col: 3 },
   provider: { label: "Provider", glyph: "⚕", cls: "bg-emerald-50 border-emerald-400 text-emerald-900", col: 3 },
   party: { label: "Party", glyph: "⚖", cls: "bg-violet-50 border-violet-300 text-violet-900", col: 3 },
-  person: { label: "Client", glyph: "☺", cls: "bg-indigo-600 border-indigo-700 text-white font-semibold", col: 3 },
+  person: { label: "Client", glyph: "☺", cls: "bg-rose-600 border-rose-700 text-white font-semibold", col: 3 },
 };
 
 const REL: Record<string, { color: string; dash?: string; label?: string }> = {
   SUPPORTS: { color: "#059669" },
   EVIDENCE_FOR: { color: "#94a3b8" },
-  CONTRADICTS: { color: "#e11d48", dash: "6 3", label: "≠ contradicts" },
+  CONTRADICTS: { color: "#dc2626", dash: "6 3", label: "≠ contradicts" },
   MISSING_EVIDENCE_FOR: { color: "#d97706", dash: "2 4", label: "missing" },
   DEPENDS_ON: { color: "#d97706", dash: "2 4", label: "waiting on" },
   MENTIONS: { color: "#cbd5e1" },
@@ -43,7 +43,7 @@ function XNode({ data }: NodeProps) {
   const status = d.state || d.status;
   return (
     <div className={`rounded-lg border px-2 py-1 text-[11px] leading-tight shadow-sm transition-opacity ${t.cls} ${d.dim ? "opacity-15" : ""}
-      ${d.selected ? "ring-4 ring-indigo-300" : ""} ${d.highlight ? "ring-2 ring-amber-400" : ""}`}
+      ${d.selected ? "ring-4 ring-rose-300" : ""} ${d.highlight ? "ring-2 ring-amber-400" : ""}`}
       style={{ width: d.type === "fact" ? 210 : 180 }} title={d.label}>
       <Handle type="target" position={Position.Left} className="!h-1.5 !w-1.5 !bg-slate-300" />
       <div className="flex items-start gap-1">
@@ -158,7 +158,7 @@ function Inner({ graph, focus, onFocusIssue }: { graph: any; focus: string[] | n
           onPaneClick={() => { setSelected(null); setEdgeSel(null); }} proOptions={{ hideAttribution: true }}>
           <Background gap={24} color="#e2e8f0" />
           <Controls showInteractive={false} />
-          <MiniMap pannable zoomable nodeColor={(n: any) => n.data?.type === "claim" ? "#6366f1" : n.data?.type === "gap" ? "#f59e0b" : n.data?.type === "issue" ? "#e11d48" : "#cbd5e1"} />
+          <MiniMap pannable zoomable nodeColor={(n: any) => n.data?.type === "claim" ? "#f43f5e" : n.data?.type === "gap" ? "#f59e0b" : n.data?.type === "issue" ? "#dc2626" : "#cbd5e1"} />
         </ReactFlow>
       </div>
 
@@ -182,9 +182,9 @@ function Inner({ graph, focus, onFocusIssue }: { graph: any; focus: string[] | n
         )}
         {sel && (
           <div className="space-y-2">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-indigo-600">{TYPE[sel.type]?.label}</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-rose-600">{TYPE[sel.type]?.label}</div>
             <div className="font-semibold">{sel.label}</div>
-            {sel.state_label && <div className="chip bg-indigo-50 text-indigo-800">{sel.state_label}</div>}
+            {sel.state_label && <div className="chip bg-rose-50 text-rose-800">{sel.state_label}</div>}
             {sel.detail && <div className="text-xs text-slate-500">{sel.detail}</div>}
             {sel.date && <div className="text-xs text-slate-500">{fmtDate(sel.date)}</div>}
             {sel.status === "needs_review" && <div className="chip bg-amber-100 text-amber-800">△ Needs review</div>}
@@ -201,7 +201,7 @@ function Inner({ graph, focus, onFocusIssue }: { graph: any; focus: string[] | n
               {connected.slice(0, 30).map((e: any) => (
                 <li key={e.id} className="flex items-start gap-1">
                   <span className="shrink-0 rounded bg-slate-100 px-1 text-[10px]">{e.relationship.replace(/_/g, " ").toLowerCase()}</span>
-                  <button className="text-left hover:text-indigo-700" onClick={() => setSelected(e.source === sel.id ? e.target : e.source)}>
+                  <button className="text-left hover:text-rose-700" onClick={() => setSelected(e.source === sel.id ? e.target : e.source)}>
                     {label(e.source === sel.id ? e.target : e.source)}
                   </button>
                 </li>
@@ -211,7 +211,7 @@ function Inner({ graph, focus, onFocusIssue }: { graph: any; focus: string[] | n
         )}
         {edgeSel && (
           <div className="space-y-2">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-indigo-600">Relationship</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-rose-600">Relationship</div>
             <div className="font-semibold">{edgeSel.relationship.replace(/_/g, " ").toLowerCase()}</div>
             <div className="text-xs">{label(edgeSel.source)} <b>→</b> {label(edgeSel.target)}</div>
             <div className="text-xs text-slate-500">{edgeSel.method === "llm" ? "Inferred by AI, then checked against facts" : "Derived from the case data"} · {edgeSel.verify_status === "verified" ? "✓ verified" : "△ needs review"}</div>

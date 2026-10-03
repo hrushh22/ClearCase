@@ -42,7 +42,7 @@ function Figure({ regions, sel, setSel }: any) {
       {dots.map((d) => (
         <g key={d.key} onClick={() => setSel(d.region)} className="cursor-pointer" role="button" aria-label={`${d.region} ${d.state}`}>
           <circle cx={d.x} cy={d.y} r={d.r} fill={d.state === "conflicting" ? "#fda4af" : d.state === "incomplete" ? "#fde68a" : "#fca5a5"}
-            fillOpacity={d.faint ? 0.35 : 0.75} stroke={sel === d.region ? "#4f46e5" : "#e11d48"} strokeWidth={sel === d.region ? 3 : 1.5}
+            fillOpacity={d.faint ? 0.35 : 0.75} stroke={sel === d.region ? "#e11d48" : "#dc2626"} strokeWidth={sel === d.region ? 3 : 1.5}
             strokeDasharray={d.state === "limited" || d.state === "incomplete" ? "3 2" : undefined} />
           <text x={d.x} y={d.y + 3} textAnchor="middle" fontSize="9" fill="#7f1d1d">{STATE[d.state]?.glyph}</text>
         </g>

@@ -15,7 +15,7 @@ export default function GapMap({ x, onOpenIssue }: { x: any; onOpenIssue: (id: s
             <div key={k} className="flex items-stretch">
               <Connector broken={pending || missing} />
               <button disabled={!s.issues?.length} onClick={() => s.issues?.[0] && onOpenIssue(s.issues[0])}
-                className={`w-44 rounded-xl border p-3 text-left ${pending ? "border-dashed border-amber-400 bg-amber-50" : missing ? "border-amber-300 bg-white" : "bg-white"}
+                className={`w-44 rounded-2xl border border-rose-100 bg-white p-3 text-left transition hover:-translate-y-0.5 hover:shadow-md ${pending ? "border-dashed border-amber-400 bg-amber-50" : missing ? "border-amber-300 bg-white" : "bg-white"}
                   ${s.issues?.length ? "hover:ring-2 hover:ring-amber-300" : ""}`}>
                 <div className="flex items-center gap-1 text-[11px] text-slate-500">{pending ? "pending" : fmtDate(s.first_date)}</div>
                 <div className="line-clamp-2 text-sm font-semibold">{pending ? s.name : s.name}</div>
@@ -42,14 +42,14 @@ export default function GapMap({ x, onOpenIssue }: { x: any; onOpenIssue: (id: s
 function Connector({ broken }: { broken: boolean }) {
   return (
     <div className="flex w-8 items-center" aria-label={broken ? "missing link" : "documented link"}>
-      <div className={`h-0.5 w-full ${broken ? "border-t-2 border-dashed border-amber-400" : "bg-indigo-400"}`} />
+      <div className={`h-0.5 w-full ${broken ? "border-t-2 border-dashed border-amber-400" : "bg-rose-400"}`} />
     </div>
   );
 }
 
 function Step({ title, sub, ok, glyph }: any) {
   return (
-    <div className={`w-32 rounded-xl border p-3 ${ok ? "border-indigo-300 bg-indigo-50" : ""}`}>
+    <div className={`w-32 rounded-xl border p-3 ${ok ? "border-rose-300 bg-rose-50" : ""}`}>
       <div className="text-lg" aria-hidden>{glyph}</div>
       <div className="text-sm font-semibold">{title}</div>
       <div className="text-[11px] text-slate-500">{sub}</div>

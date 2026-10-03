@@ -12,7 +12,7 @@ function Item({ it, tone }: { it: any; tone: string }) {
         {it.status === "needs_review" ? <span className="chip bg-amber-100 text-amber-800">△ Needs review</span>
           : it.status ? <span className="chip bg-emerald-50 text-emerald-700">✓ Checked against sources</span> : null}
         {it.judge && <span className="text-slate-500">Judge: {it.judge}</span>}
-        {it.evidence?.length > 0 && <button className="btn-ghost px-1 py-0 text-indigo-700" onClick={() => setShow(!show)}>{show ? "Hide" : "Show"} evidence ({it.evidence.length})</button>}
+        {it.evidence?.length > 0 && <button className="btn-ghost px-1 py-0 text-rose-700" onClick={() => setShow(!show)}>{show ? "Hide" : "Show"} evidence ({it.evidence.length})</button>}
       </div>
       {show && <div className="mt-1 flex flex-wrap gap-1">{it.evidence.map((e: any, k: number) => <Cite key={k} src={e} label={(e.text || e.quote || "source").slice(0, 40)} />)}</div>}
     </li>
@@ -26,9 +26,9 @@ export default function StressTest({ initial }: { initial: any }) {
   const run = (force = false) => { setBusy(true); setErr(null); api.stressTest(force).then(setRes).catch((e) => setErr(e.message)).finally(() => setBusy(false)); };
   const sections: [string, string, any[], string][] = res ? [
     ["Strongly Supported", "s", res.strong, "border-emerald-400"],
-    ["Potential Vulnerabilities", "v", res.vulnerabilities, "border-rose-400"],
+    ["Potential Vulnerabilities", "v", res.vulnerabilities, "border-red-400"],
     ["Evidence Gaps", "g", res.gaps, "border-amber-400"],
-    ["Suggested Follow-Ups", "f", res.follow_ups, "border-indigo-400"],
+    ["Suggested Follow-Ups", "f", res.follow_ups, "border-rose-400"],
   ] : [];
   return (
     <div>
@@ -40,7 +40,7 @@ export default function StressTest({ initial }: { initial: any }) {
           {res && `${res.method === "llm" ? "AI review" : "Rule-based review (no LLM)"} · ${fmtDateTime(res.generated_at)}${res.cached ? " · cached" : ""}${res.rejected ? ` · ${res.rejected} unsupported items rejected` : ""}`}
         </span>
       </div>
-      {err && <div className="mt-2 text-sm text-rose-700">{err}</div>}
+      {err && <div className="mt-2 text-sm text-red-700">{err}</div>}
       {res && (
         <>
           <div className="mt-4 grid gap-4 lg:grid-cols-2">

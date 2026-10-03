@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import * as pdfjs from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { Briefcase, CalendarDays, Database, FileText, ListChecks, Mail, Receipt, StickyNote, User } from "lucide-react";
 import { api, authedUrl, fmtDate, SOURCE_LABEL, type Src } from "../lib/api";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
@@ -8,19 +9,25 @@ pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 const Ctx = createContext<(s: Src) => void>(() => {});
 export const useSource = () => useContext(Ctx);
 
-/** Small clickable citation chip. Every fact on screen carries one. */
+const SRC_ICON: Record<string, any> = { note: StickyNote, communication: Mail, task: ListChecks, calendar: CalendarDays,
+  document: FileText, custom_field: Database, expense: Receipt, matter: Briefcase, contact: User };
+
+/** Compact citation: a source-type icon + a short label; the full source and quote show on hover. Every fact carries one. */
 export function Cite({ src, label, className = "" }: { src?: Src | null; label?: string; className?: string }) {
   const open = useSource();
   if (!src || !src.source_type) return null;
-  const text = label ?? `${SOURCE_LABEL[src.source_type] ?? src.source_type}${src.page ? ` p.${src.page}` : ""}`;
+  const kind = SOURCE_LABEL[src.source_type] ?? src.source_type;
+  const short = label ?? (src.page ? `p.${src.page}` : kind);
+  const Icon = SRC_ICON[src.source_type] || FileText;
   return (
     <button
       onClick={(e) => { e.stopPropagation(); open(src); }}
-      title={src.quote ? `"${src.quote}"` : "Open source"}
-      className={`chip bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-100 whitespace-nowrap ${className}`}
+      title={`${kind}${src.page ? `, page ${src.page}` : ""}${src.quote ? `\n"${src.quote}"` : ""}\nClick to open the source`}
+      aria-label={`Open source: ${kind}${src.page ? ` page ${src.page}` : ""}`}
+      className={`cite ${className}`}
     >
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 3h7v7M10 14L21 3M21 14v7H3V3h7" /></svg>
-      {text}
+      <Icon size={11} strokeWidth={2.4} aria-hidden />
+      {short}
     </button>
   );
 }
@@ -72,7 +79,7 @@ function Drawer({ src, onClose }: { src: Src; onClose: () => void }) {
       <div className="h-full w-full max-w-3xl bg-white shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-4 border-b px-5 py-3">
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-indigo-600">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-rose-600">
               {SOURCE_LABEL[src.source_type] ?? src.source_type} · opened from Clio record {src.source_id}
             </div>
             <div className="truncate font-semibold">{data?.title || data?.name || "Loading…"}</div>

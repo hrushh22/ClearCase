@@ -88,13 +88,13 @@ export default function ChatWidget({ mode, token, firm }: { mode: "attorney" | "
     <>
       {!open && (
         <button onClick={() => setOpen(true)} aria-label="Open the case assistant"
-          className="fixed bottom-5 right-5 z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-white shadow-xl transition hover:scale-105 hover:bg-indigo-700">
+          className="grad-bg pulse-ring fixed bottom-5 right-5 z-[60] flex h-14 w-14 items-center justify-center rounded-full text-white shadow-xl shadow-rose-300 transition hover:scale-110">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
         </button>
       )}
       {open && (
-        <div className="fixed bottom-5 right-5 z-[60] flex h-[min(600px,calc(100vh-40px))] w-[min(400px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border bg-white shadow-2xl" role="dialog" aria-label="Case assistant">
-          <div className="flex items-start gap-2 border-b bg-slate-900 px-4 py-3 text-white">
+        <div className="fade-up fixed bottom-5 right-5 z-[60] flex h-[min(600px,calc(100vh-40px))] w-[min(400px,calc(100vw-24px))] flex-col overflow-hidden rounded-3xl border border-rose-100 bg-white shadow-2xl shadow-rose-200" role="dialog" aria-label="Case assistant">
+          <div className="grad-bg flex items-start gap-2 px-4 py-3 text-white">
             <div className="min-w-0 flex-1">
               <div className="font-semibold">{mode === "provider" ? "Ask about this case" : "Case assistant"}</div>
               <div className="text-[11px] text-slate-300">
@@ -111,18 +111,18 @@ export default function ChatWidget({ mode, token, firm }: { mode: "attorney" | "
             <button onClick={() => { setOpen(false); stopRec(); window.speechSynthesis?.cancel(); }} aria-label="Close" className="rounded-lg px-2 py-1 text-slate-300 hover:bg-white/10">✕</button>
           </div>
 
-          <div className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-3">
+          <div className="flex-1 space-y-3 overflow-y-auto bg-gradient-to-b from-rose-50/60 to-white p-3">
             {msgs.length === 0 && (
               <div className="space-y-2">
                 <div className="text-sm text-slate-600">Type a question or tap the mic and speak. Try:</div>
                 {SUGGEST[mode].map((s) => (
-                  <button key={s} onClick={() => ask(s)} className="block w-full rounded-lg border bg-white px-3 py-2 text-left text-sm hover:border-indigo-300">{s}</button>
+                  <button key={s} onClick={() => ask(s)} className="block w-full rounded-xl border border-rose-100 bg-white px-3 py-2 text-left text-sm transition hover:-translate-y-0.5 hover:border-rose-300 hover:shadow-sm">{s}</button>
                 ))}
               </div>
             )}
             {msgs.map((m, i) => (
               <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${m.role === "user" ? "bg-indigo-600 text-white" : m.offline ? "border border-amber-200 bg-amber-50 text-amber-900" : "border bg-white text-slate-800"}`}>
+                <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${m.role === "user" ? "grad-bg text-white" : m.offline ? "border border-amber-200 bg-amber-50 text-amber-900" : "border bg-white text-slate-800"}`}>
                   <div className="whitespace-pre-wrap">{m.text}</div>
                   {m.citations && m.citations.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1 border-t pt-2">
@@ -133,7 +133,7 @@ export default function ChatWidget({ mode, token, firm }: { mode: "attorney" | "
                   )}
                   {m.role === "assistant" && canSpeak && !m.offline && (
                     <button onClick={() => { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(m.text.replace(/\[\d+\]/g, ""))); }}
-                      className="mt-1 text-[11px] text-slate-400 hover:text-indigo-600">🔈 read aloud</button>
+                      className="mt-1 text-[11px] text-slate-400 hover:text-rose-600">🔈 read aloud</button>
                   )}
                 </div>
               </div>
@@ -142,12 +142,12 @@ export default function ChatWidget({ mode, token, firm }: { mode: "attorney" | "
             <div ref={endRef} />
           </div>
 
-          {err && <div className="border-t bg-rose-50 px-3 py-1.5 text-xs text-rose-700">{err}</div>}
+          {err && <div className="border-t bg-red-50 px-3 py-1.5 text-xs text-red-700">{err}</div>}
           <form onSubmit={(e) => { e.preventDefault(); ask(input); }} className="flex items-center gap-2 border-t bg-white p-2">
             {canTalk && (
               <button type="button" onClick={rec === "recording" ? stopRec : startRec} disabled={rec === "transcribing" || busy}
                 aria-label={rec === "recording" ? "Stop recording" : "Speak your question"} title={rec === "recording" ? "Stop and send" : "Speak your question"}
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition ${rec === "recording" ? "animate-pulse bg-rose-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"} disabled:opacity-50`}>
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition ${rec === "recording" ? "animate-pulse bg-red-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"} disabled:opacity-50`}>
                 {rec === "recording"
                   ? <span className="h-3 w-3 rounded-sm bg-white" />
                   : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3" /></svg>}
@@ -155,8 +155,8 @@ export default function ChatWidget({ mode, token, firm }: { mode: "attorney" | "
             )}
             <input value={rec === "recording" ? `Listening… ${secs}s (tap ■ to send)` : rec === "transcribing" ? "Transcribing…" : input}
               onChange={(e) => setInput(e.target.value)} disabled={rec !== "idle"} placeholder="Ask about this case…"
-              className="min-w-0 flex-1 rounded-full border px-4 py-2 text-sm outline-none focus:border-indigo-400 disabled:bg-slate-50" />
-            <button disabled={!input.trim() || busy || rec !== "idle"} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white disabled:opacity-40" aria-label="Send">
+              className="min-w-0 flex-1 rounded-full border px-4 py-2 text-sm outline-none focus:border-rose-400 disabled:bg-slate-50" />
+            <button disabled={!input.trim() || busy || rec !== "idle"} className="grad-bg flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white shadow transition hover:scale-105 disabled:opacity-40" aria-label="Send">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z" /></svg>
             </button>
           </form>

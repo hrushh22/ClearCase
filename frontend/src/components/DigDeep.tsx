@@ -1,3 +1,5 @@
+import { FolderOpen } from "lucide-react";
+import { SectionHeader } from "./ui";
 import { useMemo, useState } from "react";
 import { Cite, useSource } from "./SourceViewer";
 import { fmtDate, money, SOURCE_LABEL } from "../lib/api";
@@ -61,11 +63,11 @@ export default function DigDeep({ d }: { d: any }) {
         </div>
       </div>
       <div className="card p-5">
-        <div className="card-h">Documents in the file</div>
+        <SectionHeader icon={FolderOpen} title="Documents in the file" note={`${d.documents.length} documents`} />
         <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
           {d.documents.map((doc: any) => (
             <button key={doc.id} onClick={() => open({ source_type: "document", source_id: doc.id, page: 1 })}
-              className="rounded-lg border p-3 text-left hover:border-indigo-300 hover:bg-indigo-50/40">
+              className="rounded-lg border p-3 text-left hover:border-rose-300 hover:bg-rose-50/40">
               <div className="truncate text-sm font-medium">{doc.name}</div>
               <div className="text-xs text-slate-500">{doc.folder} · {doc.page_count} pages{doc.scanned_pages ? ` · ${doc.scanned_pages} scanned` : ""} · {fmtDate(doc.received_at)}</div>
             </button>

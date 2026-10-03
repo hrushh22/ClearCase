@@ -23,7 +23,7 @@ function BadgeInner({ c, firm }: { c: ProviderClaim; firm: string }) {
   if (c.verified === "preview") return <span className="chip bg-slate-100 text-slate-500">preview · signed when sent</span>;
   if (c.verified === "ok")
     return <span className="chip bg-emerald-100 text-emerald-800" title="Digital signature checked in your browser">✓ Verified by {firm}, as of {fmtDateTime(c.issued_at)}</span>;
-  return <span className="chip bg-rose-100 text-rose-800">✕ Could not verify</span>;
+  return <span className="chip bg-red-100 text-red-800">✕ Could not verify</span>;
 }
 
 /** Exactly what a provider sees. Used for the live preview and the real portal. */
@@ -41,16 +41,19 @@ export default function ProviderView({ firm, provider, claims, waterfall, events
 
   return (
     <div className="space-y-4">
-      <div className="card p-5">
-        <div className="text-xs uppercase tracking-wide text-slate-500">Case status shared by {firm} with {provider}</div>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          {alive === null ? <span className="text-slate-500">Status not shared</span> : (
-            <span className={`text-2xl font-bold ${alive ? "text-emerald-700" : "text-slate-600"}`}>{alive ? "Case is active" : "Case is no longer active"}</span>
-          )}
-          {statusClaim && <Badge c={statusClaim} firm={firm} />}
+      <div className="card fade-up overflow-hidden p-0">
+        <div className="grad-bg px-5 py-4 text-white">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/85">Case status shared by {firm} with {provider}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            {alive === null ? <span className="text-white/90">Status not shared</span> : (
+              <span className="text-2xl font-extrabold tracking-tight drop-shadow-sm">{alive ? "Case is active" : "Case is no longer active"}</span>
+            )}
+            {statusClaim && <span className="rounded-full bg-white/95 p-0.5"><Badge c={statusClaim} firm={firm} /></span>}
+          </div>
         </div>
+        <div className="p-5">
         {stageClaim && (
-          <div className="mt-5">
+          <div className="mt-1">
             <StageBar index={stageIdx} />
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
               <span>{stageClaim.text}</span><Badge c={stageClaim} firm={firm} />
@@ -58,14 +61,16 @@ export default function ProviderView({ firm, provider, claims, waterfall, events
           </div>
         )}
         {lastMove && <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">{lastMove.text} <Badge c={lastMove} firm={firm} /></div>}
+        {!stageClaim && !lastMove && <div className="text-sm text-slate-500">The firm has not shared the case stage.</div>}
+        </div>
       </div>
 
       {waterfall && (
-        <div className="card p-5">
+        <div className="card card-lift p-5">
           <div className="card-h">Your place in the payment line</div>
           <div className="mt-3 flex items-end gap-1">
             {Array.from({ length: waterfall.count }).map((_, i) => (
-              <div key={i} className={`flex-1 rounded-t ${i + 1 === waterfall.position ? "bg-indigo-600" : "bg-slate-200"}`}
+              <div key={i} className={`flex-1 rounded-t ${i + 1 === waterfall.position ? "bg-rose-600" : "bg-slate-200"}`}
                 style={{ height: i + 1 === waterfall.position ? 64 : 28 }} title={i + 1 === waterfall.position ? "Your office" : "Another payee (amount private)"} />
             ))}
           </div>
@@ -91,7 +96,7 @@ export default function ProviderView({ firm, provider, claims, waterfall, events
       })}
 
       {events && (
-        <div className="card p-5">
+        <div className="card card-lift p-5">
           <div className="card-h">Case movement</div>
           {events.length === 0 && <div className="mt-1 text-sm text-slate-500">No movement since this link was shared. This page updates itself when the case moves.</div>}
           <ul className="mt-1 space-y-1">
@@ -105,7 +110,7 @@ export default function ProviderView({ firm, provider, claims, waterfall, events
           {onSubscribe && (
             <form className="mt-3 flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); onSubscribe(email); }}>
               <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@yourpractice.com"
-                className="flex-1 rounded-lg border px-3 py-2 text-sm" />
+                className="flex-1 rounded-xl border border-rose-100 px-3 py-2 text-sm outline-none focus:border-rose-300 focus:ring-4 focus:ring-rose-100" />
               <button className="btn-primary">Tell me when the case moves</button>
             </form>
           )}

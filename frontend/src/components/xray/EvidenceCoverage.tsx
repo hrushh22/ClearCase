@@ -5,7 +5,7 @@ export const STATE: Record<string, { glyph: string; cls: string; bar: string; ra
   supported: { glyph: "✓", cls: "bg-emerald-50 text-emerald-700", bar: "bg-emerald-400", rank: 4 },
   limited: { glyph: "◌", cls: "bg-slate-100 text-slate-700", bar: "bg-slate-400", rank: 2 },
   incomplete: { glyph: "?", cls: "bg-amber-100 text-amber-800", bar: "bg-amber-400", rank: 2 },
-  conflicting: { glyph: "≠", cls: "bg-rose-100 text-rose-800", bar: "bg-rose-500", rank: 1 },
+  conflicting: { glyph: "≠", cls: "bg-red-100 text-red-800", bar: "bg-red-500", rank: 1 },
 };
 
 /** Proposition support states from countable components only. No percentages, no outcome scores. */
@@ -16,9 +16,9 @@ export default function EvidenceCoverage({ props, onFocus }: { props: any[]; onF
         const s = STATE[p.state];
         const c = p.components;
         return (
-          <div key={p.id} className="rounded-xl border bg-white p-3">
+          <div key={p.id} className="card-lift rounded-2xl border border-rose-100 bg-white p-3 transition">
             <div className="flex items-start gap-2">
-              <button className="flex-1 text-left text-sm font-medium hover:text-indigo-700" onClick={() => onFocus([p.id])}>{p.title}</button>
+              <button className="flex-1 text-left text-sm font-medium hover:text-rose-700" onClick={() => onFocus([p.id])}>{p.title}</button>
               <span className={`chip shrink-0 ${s.cls}`}><span aria-hidden>{s.glyph}</span>{p.state_label}</span>
             </div>
             <div className="mt-2 flex gap-0.5" aria-hidden title={c.rule}>

@@ -4,11 +4,68 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
-html, body { background: #f6f7f9; color: #0f172a; }
-.card { @apply bg-white rounded-xl border border-slate-200 shadow-sm; }
-.card-h { @apply text-xs font-semibold uppercase tracking-wide text-slate-500; }
+/* ClearCase Rose: brand gradient rose -> pink -> peach, on white and blush */
+:root {
+  --cc-grad: linear-gradient(120deg, #f43f5e 0%, #fb7185 55%, #fdba74 100%);
+  --cc-grad-soft: linear-gradient(135deg, #fff1f2 0%, #ffffff 55%, #fff7ed 100%);
+  --cc-shadow: 0 1px 2px rgba(225, 29, 72, 0.04), 0 4px 16px -6px rgba(225, 29, 72, 0.12);
+  --cc-shadow-lift: 0 2px 4px rgba(225, 29, 72, 0.06), 0 16px 32px -12px rgba(225, 29, 72, 0.28);
+}
+
+html, body { background: #fffafa; color: #0f172a; }
+body {
+  background-image: radial-gradient(1200px 500px at 100% -10%, #ffe4e6 0%, transparent 60%),
+                    radial-gradient(900px 400px at -10% 0%, #fff7ed 0%, transparent 55%);
+  background-attachment: fixed;
+}
+
+/* ---------- surfaces ---------- */
+.card { @apply bg-white rounded-2xl border border-rose-100; box-shadow: var(--cc-shadow);
+  transition: box-shadow .25s ease, transform .25s ease, border-color .25s ease; }
+.card-lift:hover { transform: translateY(-2px); box-shadow: var(--cc-shadow-lift); border-color: #fecdd3; }
+.card-h { @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-rose-500; }
+.grad-bg { background: var(--cc-grad); }
+.grad-soft { background: var(--cc-grad-soft); }
+.grad-text { background: var(--cc-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* ---------- chips & buttons ---------- */
 .chip { @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium; }
-.btn { @apply inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition; }
-.btn-primary { @apply inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50; }
-.btn-ghost { @apply inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition text-slate-700 hover:bg-slate-100 disabled:opacity-40; }
+.btn { @apply inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium transition; }
+.btn-primary { @apply inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold text-white transition disabled:opacity-50;
+  background: var(--cc-grad); background-size: 170% 100%; background-position: 0% 50%;
+  box-shadow: 0 6px 16px -8px rgba(244, 63, 94, .7); }
+.btn-primary:hover:not(:disabled) { background-position: 100% 50%; transform: translateY(-1px); box-shadow: 0 10px 22px -10px rgba(244, 63, 94, .8); }
+.btn-ghost { @apply inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium transition text-slate-700 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-40; }
+
+/* compact source link: icon + short label, the full source on hover */
+.cite { @apply inline-flex items-center gap-1 rounded-full border border-rose-100 bg-white px-1.5 py-0.5 text-[10.5px] font-medium text-rose-600 transition whitespace-nowrap;
+  box-shadow: 0 1px 2px rgba(225, 29, 72, .06); }
+.cite:hover { @apply border-rose-300 bg-rose-50 text-rose-700; transform: translateY(-1px); }
+
+/* ---------- tabs ---------- */
+.tabs { @apply inline-flex flex-wrap gap-1 rounded-2xl border border-rose-100 bg-white/90 p-1 backdrop-blur; box-shadow: var(--cc-shadow); }
+.tab { @apply inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-slate-600 transition; }
+.tab:hover { @apply bg-rose-50 text-rose-700; }
+.tab[aria-selected="true"] { @apply text-white; background: var(--cc-grad); box-shadow: 0 6px 14px -8px rgba(244, 63, 94, .8); }
+
+/* ---------- motion ---------- */
+@keyframes cc-fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes cc-shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+@keyframes cc-pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, .45); } 70% { box-shadow: 0 0 0 14px rgba(244, 63, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); } }
+.fade-up { animation: cc-fade-up .45s cubic-bezier(.2, .7, .2, 1) both; }
+.stagger > * { animation: cc-fade-up .45s cubic-bezier(.2, .7, .2, 1) both; }
+.stagger > *:nth-child(2) { animation-delay: .05s; }
+.stagger > *:nth-child(3) { animation-delay: .1s; }
+.stagger > *:nth-child(4) { animation-delay: .15s; }
+.stagger > *:nth-child(5) { animation-delay: .2s; }
+.skeleton { @apply rounded-xl; background: linear-gradient(90deg, #fff1f2 25%, #ffe4e6 37%, #fff1f2 63%); background-size: 800px 100%; animation: cc-shimmer 1.4s infinite linear; }
+.pulse-ring { animation: cc-pulse-ring 2.4s infinite; }
+.row-hover { @apply rounded-xl transition; }
+.row-hover:hover { @apply bg-rose-50; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
 mark.quote { background: #fde68a; padding: 0 2px; border-radius: 2px; }
+::selection { background: #fecdd3; }

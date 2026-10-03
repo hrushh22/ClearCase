@@ -11,14 +11,14 @@ import { fmtDate } from "../../lib/api";
 import { STATE } from "./EvidenceCoverage";
 
 const ISSUE: Record<string, { glyph: string; label: string; cls: string }> = {
-  contradiction: { glyph: "≠", label: "Contradiction", cls: "border-rose-300 bg-rose-50 text-rose-900" },
-  amount_mismatch: { glyph: "$≠", label: "Amount mismatch", cls: "border-rose-300 bg-rose-50 text-rose-900" },
+  contradiction: { glyph: "≠", label: "Contradiction", cls: "border-red-300 bg-red-50 text-red-900" },
+  amount_mismatch: { glyph: "$≠", label: "Amount mismatch", cls: "border-red-300 bg-red-50 text-red-900" },
   missing_evidence: { glyph: "?", label: "Evidence gap", cls: "border-amber-300 bg-amber-50 text-amber-900 border-dashed" },
   timeline_gap: { glyph: "⏱", label: "Timeline", cls: "border-amber-300 bg-amber-50 text-amber-900 border-dashed" },
   dependency: { glyph: "⧗", label: "Waiting on", cls: "border-sky-300 bg-sky-50 text-sky-900" },
 };
 const ENTITY: Record<string, { glyph: string; cls: string }> = {
-  injury: { glyph: "✚", cls: "border-rose-200 bg-white text-rose-900" },
+  injury: { glyph: "✚", cls: "border-red-200 bg-white text-red-900" },
   provider: { glyph: "⚕", cls: "border-emerald-200 bg-white text-emerald-900" },
   party: { glyph: "⚖", cls: "border-violet-200 bg-white text-violet-900" },
 };
@@ -26,7 +26,7 @@ const SRC_LABEL: Record<string, string> = { note: "Note", communication: "Email/
   custom_field: "Clio field", expense: "Clio charge", matter: "Matter", contact: "Contact" };
 const EDGE: Record<string, { color: string; dash?: string; label: string }> = {
   INVOLVES: { color: "#94a3b8", label: "" },
-  CONTRADICTS: { color: "#e11d48", dash: "6 3", label: "conflicts" },
+  CONTRADICTS: { color: "#dc2626", dash: "6 3", label: "conflicts" },
   MISSING_EVIDENCE_FOR: { color: "#d97706", dash: "3 4", label: "missing" },
   DEPENDS_ON: { color: "#0284c7", dash: "3 4", label: "waiting on" },
   SUPPORTS: { color: "#059669", label: "supports" },
@@ -53,16 +53,16 @@ function Card({ data }: NodeProps) {
   if (d.card === "claim" || d.card === "center") {
     const s = STATE[d.state] || STATE.limited;
     return (
-      <div style={style} className={`cursor-pointer rounded-xl border bg-white px-3 py-2 shadow-sm transition hover:shadow-md ${d.card === "center" ? "border-indigo-400 ring-4 ring-indigo-100" : "border-slate-200"}`}>
+      <div style={style} className={`cursor-pointer rounded-xl border bg-white px-3 py-2 shadow-sm transition hover:shadow-md ${d.card === "center" ? "border-rose-400 ring-4 ring-rose-100" : "border-slate-200"}`}>
         {h}
         <div className="flex items-start gap-2">
-          <span aria-hidden className="text-indigo-500">◆</span>
+          <span aria-hidden className="text-rose-500">◆</span>
           <div className="line-clamp-2 flex-1 text-[13px] font-semibold leading-snug text-slate-900">{d.label}</div>
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px]">
           <span className={`chip ${s.cls}`}><span aria-hidden>{s.glyph}</span>{d.state_label}</span>
           {d.verified != null && <span className="text-slate-500">{d.verified} verified</span>}
-          {d.contradictions > 0 && <span className="text-rose-700">· ≠ {d.contradictions}</span>}
+          {d.contradictions > 0 && <span className="text-red-700">· ≠ {d.contradictions}</span>}
           {d.gaps > 0 && <span className="text-amber-700">· ? {d.gaps}</span>}
         </div>
         {d.chips?.length > 0 && (
@@ -89,11 +89,11 @@ function Card({ data }: NodeProps) {
   }
   if (d.card === "fact") {
     return (
-      <div style={style} className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm transition hover:border-indigo-300 hover:shadow-md" title="Open source">
+      <div style={style} className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm transition hover:border-rose-300 hover:shadow-md" title="Open source">
         {h}
         <div className="line-clamp-3 text-[12px] leading-snug text-slate-800">{d.label}</div>
         <div className="mt-1 flex items-center gap-1 text-[10px] text-slate-500">
-          <span className="rounded bg-indigo-50 px-1.5 py-0.5 font-medium text-indigo-700">↗ {SRC_LABEL[d.source_type] || d.source_type}{d.page ? ` p.${d.page}` : ""}</span>
+          <span className="rounded bg-rose-50 px-1.5 py-0.5 font-medium text-rose-700">↗ {SRC_LABEL[d.source_type] || d.source_type}{d.page ? ` p.${d.page}` : ""}</span>
           {d.date && <span>{fmtDate(d.date)}</span>}
         </div>
       </div>
@@ -101,7 +101,7 @@ function Card({ data }: NodeProps) {
   }
   if (d.card === "action") {
     return (
-      <div style={style} className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-[12px] text-indigo-900">
+      <div style={style} className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-900">
         {h}
         <div className="text-[10px] font-semibold uppercase tracking-wide">Suggested follow-up</div>
         <div className="line-clamp-2">{d.label}</div>
@@ -248,10 +248,10 @@ function Inner({ x, focus, onFocusIssue }: { x: any; focus: string[] | null; onF
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border bg-slate-50/60">
+    <div className="overflow-hidden rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50/40 to-white">
       <div className="flex flex-wrap items-center gap-2 border-b bg-white px-3 py-2 text-sm">
         <nav className="flex min-w-0 flex-1 items-center gap-1" aria-label="Breadcrumb">
-          <button className={`font-medium ${view.mode === "overview" ? "text-slate-900" : "text-indigo-700 hover:underline"}`} onClick={() => setView({ mode: "overview" })}>Overview</button>
+          <button className={`font-medium ${view.mode === "overview" ? "text-slate-900" : "text-rose-700 hover:underline"}`} onClick={() => setView({ mode: "overview" })}>Overview</button>
           {view.mode === "focus" && <><span className="text-slate-400">›</span><span className="truncate font-medium text-slate-900">{built?.title}</span></>}
           {view.mode === "full" && <><span className="text-slate-400">›</span><span className="font-medium">Full network</span></>}
         </nav>
@@ -278,7 +278,7 @@ function Inner({ x, focus, onFocusIssue }: { x: any; focus: string[] | null; onF
             {view.mode === "overview" ? (
               <>
                 <span><b>Click</b> a proposition or issue to see the evidence behind it.</span>
-                <Legend color="#e11d48" dash="6 3" label="conflicts with" />
+                <Legend color="#dc2626" dash="6 3" label="conflicts with" />
                 <Legend color="#d97706" dash="3 4" label="missing evidence for" />
                 <Legend color="#0284c7" dash="3 4" label="waiting on" />
                 <span>Chips inside a card = injuries and people it involves.</span>
@@ -287,7 +287,7 @@ function Inner({ x, focus, onFocusIssue }: { x: any; focus: string[] | null; onF
               <>
                 <span><b>Click</b> an evidence card to open the source at the cited page.</span>
                 <Legend color="#059669" label="supports" />
-                <Legend color="#e11d48" dash="6 3" label="conflicts" />
+                <Legend color="#dc2626" dash="6 3" label="conflicts" />
                 <Legend color="#d97706" dash="3 4" label="missing / affects" />
               </>
             )}
